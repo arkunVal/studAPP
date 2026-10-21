@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Studium</title>
+<meta name="theme-color" content="#0c0a0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Studium">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+</head>
+<body>
+<div id="auth" hidden>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="auth-grid">
+    <section class="auth-brand">
+      <div class="logo big"><i aria-hidden="true"><b></b><b></b><b></b></i>Studium</div>
+      <h1>Dein Semester.<br>Auf einen Blick.</h1>
+      <p>Stundenplan, Abgaben und Skripte. Auf PC, iPad und iPhone immer auf dem gleichen Stand.</p>
+      <ul class="auth-pts">
+        <li><span class="mini"><b></b><b></b><b></b><b></b></span>Stundenplan mit zweiwöchigen Übungen</li>
+        <li><span class="mini"><b></b><b></b><b></b><b></b></span>Fristen, Punkte und Erinnerungen</li>
+        <li><span class="mini"><b></b><b></b><b></b><b></b></span>PDFs und Notizen je Modul</li>
+      </ul>
+    </section>
+    <section class="auth-card"><div id="authbox"></div></section>
+  </div>
+</div>
+<div class="wrap">
+  <div class="navwrap">
+    <header class="nav">
+      <div class="logo"><i aria-hidden="true"><b></b><b></b><b></b></i>Studium</div>
+      <nav class="links" id="links" aria-label="Hauptnavigation"></nav>
+      <div class="nav-r">
+        <span class="sync" id="sync" data-s="lokal">Nur lokal</span>
+        <select class="semsel" id="semsel" aria-label="Semester"></select>
+        <button class="ibtn" id="bsearch" aria-label="Wissen durchsuchen"></button>
+        <button class="ibtn" id="btheme" aria-label="Hell oder dunkel umschalten"></button>
+        <button class="avatar" id="bprof" aria-label="Profil"></button>
+        <button class="btn pri" id="bnew"></button>
+      </div>
+    </header>
+    <div class="mbar"><select class="semsel" id="semsel2" aria-label="Semester"></select><span class="sync" id="sync2" data-s="lokal">Nur lokal</span></div>
+  </div>
+  <main id="view"></main>
+</div>
+<div class="tabbar"><nav id="tabs" aria-label="Navigation"></nav></div>
+<div id="modal" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="/src/app.js"></script>
+</body>
+</html>
