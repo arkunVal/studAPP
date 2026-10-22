@@ -53,12 +53,12 @@ function toMin(t){var p=String(t).split(':');return (+p[0])*60+(+p[1]||0);}
 function dayDiff(a,b){return Math.round((sod(a)-sod(b))/864e5);}
 
 /* ---------- Daten ---------- */
-var S=null, view='start', planWeek=0, planDay=0, calM=null, taskF='alle', fileF={mod:'',tag:'',q:''};
+var S=null, view='start', planWeek=0, planDay=-1, calM=null, taskF='alle', fileF={mod:'',tag:'',q:''};
 var user=null, P={name:'',study:'',accent:'#ff6b2c'}, channel=null, recovering=false, saveTimer=null, writing=false, syncState='lokal';
 
 function emptyState(){
   return {v:1,updated:0,demo:false,semId:'sem1',types:['Vorlesung','Übung','Kolloquium'],
-    semesters:[{id:'sem1',name:'Mein erstes Semester'}],modules:[],slots:[],tasks:[],files:[],contacts:[],exams:[],cards:[],sessions:[],notes:[],settings:{ects:180,perSem:30,grade:2,focus:25,brk:5}};
+    semesters:[{id:'sem1',name:'Mein erstes Semester'}],modules:[],slots:[],tasks:[],files:[],contacts:[],exams:[],cards:[],sessions:[],notes:[],events:[],settings:{ects:180,perSem:30,grade:2,focus:25,brk:5}};
 }
 function loadLocal(){try{var r=localStorage.getItem(LS);if(r){var o=JSON.parse(r);if(o&&o.semesters)return ensureState(o);}}catch(e){}return null;}
 function touch(){
@@ -141,7 +141,7 @@ async function fetchProfile(){
 function loadProfileLocal(){try{var r=localStorage.getItem(LSP+':'+user.id);if(r)return JSON.parse(r);}catch(e){}return {name:(user.user_metadata&&user.user_metadata.name)||'',study:'',accent:'#ff6b2c'};}
 
 /* ---------- Abfragen ---------- */
-function mods(){return S.modules.filter(function(m){return m.sem===S.semId;});}
+function mods(){return S.modules.filter(function(m){return inSem(m,S.semId);});}
 function modById(id){return S.modules.filter(function(m){return m.id===id;})[0];}
 function modIds(){return mods().map(function(m){return m.id;});}
 function slots(){var ids=modIds();return S.slots.filter(function(s){return ids.indexOf(s.mod)>-1;});}
@@ -214,9 +214,7 @@ function vStart(){
     (upc?'<div><div class="big">'+esc(modById(upc.mod).name.replace(' (Beispiel)',''))+'</div><div style="font-weight:600;margin-top:2px">'+esc(upc.type)+'</div></div><div class="meta"><span>'+ic('clock')+(dayDiff(upDay,now)===0?'Heute':fmtD(upDay))+', '+upc.start+'–'+upc.end+'</span>'+(upc.room?'<span>'+ic('pin')+esc(upc.room)+'</span>':'')+'</div>'
      :'<div class="big">Keine Termine in Sicht</div><div class="meta"><span>Trag im Stundenplan Veranstaltungen ein.</span></div>')+'</div>';
 
-  var todayList=todays.length?todays.map(function(s){var m=modById(s.mod);var cur=toMin(s.start)<=nowMin&&nowMin<toMin(s.end);
-    return '<button class="item" data-act="editslot" data-id="'+s.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.short)+' · '+esc(s.type)+'</div><div class="s">'+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+'</div></span>'+(cur?'<span class="pill acc">läuft</span>':'')+'</button>';}).join('')
-    :'<div class="empty">Heute ist frei.</div>';
+  var todayList=todayRows(now,nowMin);
 
   // Statistik-Karten
   var barsT=todays.length?'<div class="bars">'+todays.map(function(s){var h=(toMin(s.end)-toMin(s.start))/60;return '<b style="height:'+Math.round(Math.min(30,8+h*10))+'px"></b>';}).join('')+'</div>':'<div class="hint">frei</div>';
@@ -243,8 +241,8 @@ function vStart(){
   return '<div class="ph"><div><h1>'+g+(P.name?', '+esc(P.name.split(' ')[0]):'')+'</h1><p>'+now.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+' · KW '+isoWeek(now)+' · '+esc(sem?sem.name:'')+(P.study?' · '+esc(P.study):'')+'</p></div></div>'+
    '<div class="dash"><div class="col">'+(remH?'<div class="list">'+remH+'</div>':'')+stats+stats2()+
    '<div class="two"><div class="card"><h3>Fristen pro Woche <small>nächste 8 Wochen</small></h3>'+chart(all)+'<div class="legend"><span>offen</span><span class="g">abgegeben</span></div></div>'+feature+'</div>'+
-   '<div class="card"><h3>Heute im Stundenplan <button class="btn sm ghost" data-go="plan">Zum Plan</button></h3><div class="list">'+todayList+'</div></div></div>'+
-   '<aside class="col"><div class="card">'+calendar(all)+'</div><div class="card"><h3>Anstehende Abgaben <button class="btn sm ghost" data-go="abgaben">Alle</button></h3><div class="list">'+
+   '<div class="card"><h3>Heute <button class="btn sm ghost" data-go="plan">Zum Plan</button></h3><div class="list">'+todayList+'</div></div></div>'+
+   '<aside class="col"><div class="card">'+calendar(all)+'</div>'+dayCard()+'<div class="card"><h3>Anstehende Abgaben <button class="btn sm ghost" data-go="abgaben">Alle</button></h3><div class="list">'+
    (open.length?open.slice(0,4).map(function(t){var m=modById(t.mod),c=countdown(t.due);return '<button class="item" data-act="edittask" data-id="'+t.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(t.title)+'</div><div class="s">'+esc(m.short)+' · '+fmtD(new Date(t.due))+'</div></span><span class="pill '+c.c+'">'+c.t+'</span></button>';}).join(''):'<div class="empty">Keine offenen Abgaben.</div>')+
    '</div></div></aside></div>';
 }
@@ -263,44 +261,6 @@ function chart(all){
     s+='<text x="'+(x+w/2)+'" y="'+(vh-6)+'" text-anchor="middle">KW '+isoWeek(addDays(m0,i*7))+'</text>';
   });
   return '<svg class="chart" viewBox="0 0 '+vw+' '+vh+'" role="img" aria-label="Anzahl der Abgabefristen pro Kalenderwoche">'+s+'</svg>';
-}
-
-function calendar(all){
-  var now=new Date();if(!calM)calM=new Date(now.getFullYear(),now.getMonth(),1);
-  var first=calM,start=monday(first),cells='',fr={};
-  all.forEach(function(t){if(isOpen(t)){var d=new Date(t.due);fr[d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()]=1;}});
-  S.exams.forEach(function(e){if(!modById(e.mod))return;[e.date,(e.registered?'':e.regDeadline)].forEach(function(x){if(x){var d=new Date(x);fr[d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()]=1;}});});
-  for(var i=0;i<42;i++){var d=addDays(start,i);if(i>=35&&d.getMonth()!==first.getMonth())break;
-    var cl='d'+(d.getMonth()!==first.getMonth()?' o':'')+(dayDiff(d,now)===0?' t':'')+(fr[d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()]?' f':'');
-    cells+='<div class="'+cl+'">'+d.getDate()+'</div>';}
-  return '<div class="cal"><div class="cal-h"><button class="ibtn" data-act="calprev" aria-label="Vorheriger Monat">'+ic('left')+'</button><span>'+first.toLocaleDateString('de-DE',{month:'long',year:'numeric'})+'</span><button class="ibtn" data-act="calnext" aria-label="Nächster Monat">'+ic('right')+'</button></div><div class="cal-g">'+DS.concat(['So']).map(function(x){return '<div class="w">'+x+'</div>';}).join('')+cells+'</div><div class="hint" style="margin-top:10px"><span style="color:var(--red)">●</span> Abgabe, Prüfung oder Anmeldefrist</div></div>';
-}
-
-function vPlan(){
-  var now=new Date(), mon=addDays(monday(now),planWeek*7), wk=isoWeek(mon);
-  var ss=slots(), sat=ss.some(function(s){return s.day===5;}), cols=sat?6:5;
-  var lo=8,hi=18;ss.forEach(function(s){lo=Math.min(lo,Math.floor(toMin(s.start)/60));hi=Math.max(hi,Math.ceil(toMin(s.end)/60));});
-  var PX=54, H=(hi-lo)*PX;
-  var head='<div></div>',body='',hrs='';
-  for(var h=lo;h<=hi;h++){hrs+='<span style="top:'+((h-lo)*PX)+'px">'+pad(h)+':00</span>';}
-  var dayHtml=[];
-  for(var d=0;d<cols;d++){
-    var date=addDays(mon,d),today=dayDiff(date,now)===0;
-    head+='<div class="hd'+(today?' today':'')+'">'+DS[d]+'<small>'+pad(date.getDate())+'.'+pad(date.getMonth()+1)+'.</small></div>';
-    var lines='';for(var h2=lo;h2<hi;h2++)lines+='<div class="hl" style="top:'+((h2-lo)*PX)+'px"></div>';
-    var blocks=slotsOn(date).map(function(s){var m=modById(s.mod),top=(toMin(s.start)-lo*60)/60*PX,hh=(toMin(s.end)-toMin(s.start))/60*PX;
-      return '<button class="blk'+(s.bi?' bi':'')+'" data-act="editslot" data-id="'+s.id+'" style="top:'+top+'px;height:'+Math.max(hh-2,28)+'px;background:'+m.color+'"><b>'+esc(m.short)+' · '+esc(s.type)+'</b><span>'+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+'</span></button>';}).join('');
-    body+='<div class="dcol" style="height:'+H+'px">'+lines+blocks+'</div>';
-  }
-  var grid='<div class="grid" style="--cols:'+cols+'">'+head+'<div class="hours" style="height:'+H+'px">'+hrs+'</div>'+body+'</div>';
-  // Handy: Tagesliste
-  if(planDay>=cols)planDay=0;
-  var tabs='<div class="tabs" role="group" aria-label="Wochentag">'+DS.slice(0,cols).map(function(n,i){var dt=addDays(mon,i);return '<button data-act="planday" data-i="'+i+'" aria-pressed="'+(planDay===i)+'">'+n+'<small>'+pad(dt.getDate())+'.'+pad(dt.getMonth()+1)+'.</small></button>';}).join('')+'</div>';
-  var dl=slotsOn(addDays(mon,planDay));
-  var list='<div class="list">'+(dl.length?dl.map(function(s){var m=modById(s.mod);return '<button class="item" data-act="editslot" data-id="'+s.id+'" style="border-left:5px solid '+m.color+'"><span class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+esc(s.type)+' · '+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+(s.bi?' · alle 2 Wochen':'')+'</div></span></button>';}).join(''):'<div class="empty">Kein Termin an diesem Tag.</div>')+'</div>';
-  return '<div class="ph"><div><h1>Stundenplan</h1><p>Wöchentlich gleich, zweiwöchige Übungen erscheinen nur in der passenden KW.</p></div><div class="acts"><button class="btn pri" data-act="newslot">'+ic('plus2')+' Termin</button></div></div>'+
-   '<div class="weekbar"><button class="ibtn" data-act="wprev" aria-label="Vorherige Woche">'+ic('left')+'</button><span class="wk">KW '+wk+' · '+pad(mon.getDate())+'.'+pad(mon.getMonth()+1)+'.</span><button class="ibtn" data-act="wnext" aria-label="Nächste Woche">'+ic('right')+'</button>'+(planWeek?'<button class="btn sm" data-act="wnow">Diese Woche</button>':'')+'</div>'+
-   '<div class="card">'+(mods().length?grid+'<div class="daylist">'+tabs+list+'</div>':'<div class="empty">Lege zuerst unter „Module“ ein Modul an.</div>')+'</div>';
 }
 
 function vTasks(){
@@ -330,7 +290,7 @@ function vFiles(){
 
 function vMods(){
   var cards=mods().map(function(m){var ns=S.slots.filter(function(s){return s.mod===m.id;}).length,nt=S.tasks.filter(function(t){return t.mod===m.id;}).length,nf=S.files.filter(function(f){return f.mod===m.id;}).length;
-    return '<div class="card mcard"><div class="bar" style="background:'+m.color+'"></div><div><span class="pill">'+esc(m.short)+'</span></div><h3>'+esc(m.name)+'</h3><div class="hint">'+(m.kind==='ku'?'Kolloquium + Übung':'Vorlesung + Übung')+(m.ects?' · '+m.ects+' ECTS':'')+'</div>'+(profName(m)?'<div class="cline">'+ic('user')+esc(profName(m))+'</div>':'')+'<div class="row"><span class="pill '+pillFor(modStatus(m))+'">'+modStatus(m)+'</span>'+(hasGrade(m)?'<span class="pill">Note '+fmtGrade(m.grade)+'</span>':'')+'</div><div class="row"><span class="pill">'+ns+' Termine</span><span class="pill">'+nt+' Abgaben</span><span class="pill">'+nf+' Dateien</span></div><div class="row"><button class="btn sm" data-act="editmod" data-id="'+m.id+'">Bearbeiten</button></div></div>';}).join('');
+    return '<div class="card mcard"><div class="bar" style="background:'+m.color+'"></div><div><span class="pill">'+esc(m.short)+'</span></div><h3>'+esc(m.name)+'</h3><div class="hint">'+(m.kind==='ku'?'Kolloquium + Übung':'Vorlesung + Übung')+(m.ects?' · '+m.ects+' ECTS':'')+(m.sem2?' · über 2 Semester':'')+'</div>'+(profName(m)?'<div class="cline">'+ic('user')+esc(profName(m))+'</div>':'')+'<div class="row"><span class="pill '+pillFor(modStatus(m))+'">'+modStatus(m)+'</span>'+(hasGrade(m)?'<span class="pill">Note '+fmtGrade(m.grade)+'</span>':'')+'</div><div class="row"><span class="pill">'+ns+' Termine</span><span class="pill">'+nt+' Abgaben</span><span class="pill">'+nf+' Dateien</span></div><div class="row"><button class="btn sm" data-act="editmod" data-id="'+m.id+'">Bearbeiten</button></div></div>';}).join('');
   return '<div class="ph"><div><h1>Module</h1><p>Ein Modul besteht aus Vorlesung + Übung oder Kolloquium + Übung.</p></div><div class="acts"><button class="btn" data-act="newsem">Neues Semester</button><button class="btn pri" data-act="newmod">'+ic('plus2')+' Modul</button></div></div>'+
    '<div class="mgrid">'+(cards||'<div class="card empty">Noch kein Modul in diesem Semester.</div>')+'</div>'+
    '<div class="card" style="margin-top:18px"><h3>Veranstaltungstypen</h3><div class="tags" style="margin-bottom:12px">'+S.types.map(function(t){return '<span class="pill">'+esc(t)+(['Vorlesung','Übung','Kolloquium'].indexOf(t)<0?' <button class="ibtn" style="width:18px;height:18px;border-radius:6px" data-act="deltype" data-t="'+esc(t)+'" aria-label="Typ entfernen">'+ic('x')+'</button>':'')+'</span>';}).join('')+'</div><form id="typeform" style="display:flex;gap:8px;max-width:360px"><input class="fi" id="newtype" placeholder="Weiteren Typ hinzufügen, z. B. Tutorium"><button class="btn">Hinzufügen</button></form></div>'+
@@ -552,7 +512,7 @@ var LSTM='studium:timer';
 
 /* ---------- Daten-Helfer ---------- */
 function ensureState(o){
-  ['modules','slots','tasks','files','contacts','exams','cards','sessions','notes'].forEach(function(k){if(!Array.isArray(o[k]))o[k]=[];});
+  ['modules','slots','tasks','files','contacts','exams','cards','sessions','notes','events'].forEach(function(k){if(!Array.isArray(o[k]))o[k]=[];});
   if(!o.settings||typeof o.settings!=='object')o.settings={};
   var s=o.settings;
   if(!(+s.ects>0))s.ects=180;
@@ -591,7 +551,7 @@ function gradeStats(){
 }
 function semSums(semId){
   var r={done:0,run:0,plan:0};
-  S.modules.forEach(function(m){if(m.sem!==semId)return;var e=modEcts(m),st=modStatus(m);if(st==='bestanden')r.done+=e;else if(st==='geplant')r.plan+=e;else r.run+=e;});
+  S.modules.forEach(function(m){if(!inSem(m,semId))return;var e=modEcts(m)*(m.sem2?0.5:1),st=modStatus(m);if(st==='bestanden')r.done+=e;else if(st==='geplant')r.plan+=e;else r.run+=e;});
   return r;
 }
 function stackHtml(done,run,plan,total){
@@ -624,7 +584,7 @@ function vNoten(){
   var rowsSem=S.semesters.map(function(s){var q=semSums(s.id),n=q.done+q.run+q.plan;
     return '<div class="srow"><div class="sl"><span>'+esc(s.name)+(s.id===S.semId?' <span class="pill acc">aktiv</span>':'')+'</span><span class="hint">'+fmtNum(q.done)+' von '+fmtNum(n)+' ECTS bestanden</span></div>'+stackHtml(q.done,q.run,q.plan,per)+'</div>';}).join('');
   var graded=S.modules.filter(function(m){return modStatus(m)==='bestanden'&&hasGrade(m);}).sort(function(a,b){return a.grade-b.grade;});
-  var gl=graded.length?graded.map(function(m){return '<button class="item" data-act="editmod" data-id="'+m.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+fmtNum(modEcts(m))+' ECTS · Gewicht '+fmtNum(modWeight(m))+' · '+esc(semName(m.sem))+'</div></span><span class="pill good">'+fmtGrade(m.grade)+'</span></button>';}).join(''):'<div class="empty">Noch keine benoteten Module. Setze bei einem Modul den Status „bestanden“ und trage die Note ein.</div>';
+  var gl=graded.length?graded.map(function(m){return '<button class="item" data-act="editmod" data-id="'+m.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+fmtNum(modEcts(m))+' ECTS · Gewicht '+fmtNum(modWeight(m))+' · '+esc(semLabel(m))+'</div></span><span class="pill good">'+fmtGrade(m.grade)+'</span></button>';}).join(''):'<div class="empty">Noch keine benoteten Module. Setze bei einem Modul den Status „bestanden“ und trage die Note ein.</div>';
   var X=S.settings.grade||2,R=calcDefaultR(st);
   return '<div class="ph"><div><h1>Noten und ECTS</h1><p>Fortschritt bis zum Abschluss und Notenschnitt mit Gewichtung.</p></div><div class="acts"><button class="btn" data-go="module">Module bearbeiten</button></div></div>'+
    '<div class="ngrid"><div class="col">'+
@@ -641,11 +601,11 @@ function vPlanung(){
   var st=gradeStats(),Tg=S.settings.ects||180,per=S.settings.perSem||30,used=st.ects+st.running+st.planned,left=Math.max(0,Tg-used);
   var need=left?Math.ceil(left/per):0;
   var cards=S.semesters.map(function(s){
-    var q=semSums(s.id),mm=S.modules.filter(function(m){return m.sem===s.id;});
+    var q=semSums(s.id),mm=S.modules.filter(function(m){return inSem(m,s.id);});
     var range=(s.start||s.end)?'<div class="hint">'+(s.start?new Date(s.start).toLocaleDateString('de-DE'):'')+' bis '+(s.end?new Date(s.end).toLocaleDateString('de-DE'):'')+'</div>':'';
     return '<div class="card sem"><h3><span>'+esc(s.name)+(s.id===S.semId?' <span class="pill acc">aktiv</span>':'')+'</span><button class="btn sm ghost" data-act="editsem" data-id="'+s.id+'">Bearbeiten</button></h3>'+range+
      '<div class="srow" style="margin:10px 0 12px"><div class="sl"><span class="hint">'+fmtNum(q.done+q.run+q.plan)+' von '+per+' ECTS</span></div>'+stackHtml(q.done,q.run,q.plan,per)+'</div>'+
-     '<div class="list">'+(mm.length?mm.map(function(m){return '<button class="item" data-act="editmod" data-id="'+m.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+fmtNum(modEcts(m))+' ECTS'+(profName(m)?' · '+esc(profName(m)):'')+'</div></span><span class="pill '+pillFor(modStatus(m))+'">'+modStatus(m)+'</span></button>';}).join(''):'<div class="empty">Noch keine Module.</div>')+'</div>'+
+     '<div class="list">'+(mm.length?mm.map(function(m){return '<button class="item" data-act="editmod" data-id="'+m.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+fmtNum(modEcts(m))+' ECTS'+(m.sem2?' · Teil '+(m.sem===s.id?1:2)+' von 2':'')+(profName(m)?' · '+esc(profName(m)):'')+'</div></span><span class="pill '+pillFor(modStatus(m))+'">'+modStatus(m)+'</span></button>';}).join(''):'<div class="empty">Noch keine Module.</div>')+'</div>'+
      '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="newmodsem" data-sem="'+s.id+'">'+ic('plus2')+' Modul</button>'+(s.id===S.semId?'':'<button class="btn sm" data-act="setsem" data-id="'+s.id+'">Als aktiv setzen</button>')+'</div></div>';}).join('');
   return '<div class="ph"><div><h1>Semesterplanung</h1><p>Verteile deine Module auf die Semester und behalte die ECTS im Blick.</p></div><div class="acts"><button class="btn pri" data-act="newsem">'+ic('plus2')+' Semester</button></div></div>'+
    '<div class="card" style="margin-bottom:18px"><h3>Bis zum Abschluss <small>Ziel '+Tg+' ECTS</small></h3>'+stackHtml(st.ects,st.running,st.planned,Tg)+
@@ -654,7 +614,7 @@ function vPlanung(){
 }
 function semForm(id){
   var s=id?S.semesters.filter(function(x){return x.id===id;})[0]:{name:'',start:'',end:''};
-  var nm=S.modules.filter(function(m){return m.sem===id;}).length;
+  var nm=S.modules.filter(function(m){return inSem(m,id);}).length;
   modal(id?'Semester bearbeiten':'Neues Semester',fld('Name','name','text',s.name,'required placeholder="z. B. Sommersemester 2027"')+'<div class="frow">'+fld('Beginn','start','date',s.start||'')+fld('Ende','end','date',s.end||'')+'</div>',function(fd){
     var n=fd.get('name').trim();if(!n)return false;
     if(id){s.name=n;s.start=fd.get('start')||'';s.end=fd.get('end')||'';}
@@ -705,7 +665,7 @@ function modForm(id,semPre){
   var profs=S.contacts.filter(function(c){return c.type==='dozent';}).sort(function(a,b){return a.name.localeCompare(b.name,'de');});
   modal(id?'Modul bearbeiten':'Neues Modul',
    fld('Name','name','text',m.name,'required')+'<div class="frow">'+fld('Kürzel','short','text',m.short,'required maxlength="6" placeholder="z. B. AN1"')+sel('Semester','sem',S.semesters.map(function(s){return [s.id,s.name];}),m.sem)+'</div>'+
-   sel('Aufbau','kind',[['vu','Vorlesung + Übung'],['ku','Kolloquium + Übung']],m.kind)+
+   '<div class="frow">'+sel('Aufbau','kind',[['vu','Vorlesung + Übung'],['ku','Kolloquium + Übung']],m.kind)+sel('Läuft auch im Semester','sem2',[['','– nur ein Semester –']].concat(S.semesters.map(function(s){return [s.id,s.name];})),m.sem2||'')+'</div>'+
    '<div class="frow">'+sel('Dozent','prof',[['','– keiner –']].concat(profs.map(function(c){return [c.id,c.name];})),m.prof||'')+fld('Neuer Dozent','newprof','text','','placeholder="Name eintragen zum Anlegen" maxlength="80"')+'</div>'+
    '<div class="frow">'+fld('ECTS','ects','number',m.ects===''||m.ects==null?'':m.ects,'step="0.5" min="0" inputmode="decimal"')+fld('Gewichtung für den Schnitt','weight','number',m.weight===''||m.weight==null?'':m.weight,'step="0.5" min="0" inputmode="decimal" placeholder="leer = wie ECTS"')+'</div>'+
    '<div class="frow">'+sel('Status','status',STATUS_M,modStatus(m))+fld('Endnote (1,0 bis 5,0)','grade','number',hasGrade(m)?m.grade:'','step="0.1" min="1" max="5" inputmode="decimal"')+'</div>'+
@@ -717,7 +677,7 @@ function modForm(id,semPre){
      var prof=fd.get('prof'),np=fd.get('newprof').trim();
      if(np){var ex=S.contacts.filter(function(c){return c.type==='dozent'&&c.name.toLowerCase()===np.toLowerCase();})[0];
        if(ex)prof=ex.id;else{var c={id:uid(),type:'dozent',name:np,email:'',phone:'',room:'',hours:'',link:'',mod:'',note:''};S.contacts.push(c);prof=c.id;}}
-     var o={id:id||uid(),sem:fd.get('sem'),name:fd.get('name').trim(),short:fd.get('short').trim(),color:fd.get('color')||COLORS[0],kind:fd.get('kind'),prof:prof,ects:fd.get('ects')===''?'':+fd.get('ects'),weight:fd.get('weight')===''?'':+fd.get('weight'),status:fd.get('status'),grade:g===''?null:+g};
+     var o={id:id||uid(),sem:fd.get('sem'),sem2:(fd.get('sem2')&&fd.get('sem2')!==fd.get('sem'))?fd.get('sem2'):'',name:fd.get('name').trim(),short:fd.get('short').trim(),color:fd.get('color')||COLORS[0],kind:fd.get('kind'),prof:prof,ects:fd.get('ects')===''?'':+fd.get('ects'),weight:fd.get('weight')===''?'':+fd.get('weight'),status:fd.get('status'),grade:g===''?null:+g};
      if(id)S.modules=S.modules.map(function(x){return x.id===id?o:x;});else S.modules.push(o);
      touch();render();paintNav();},
    id?{del:function(){S.modules=S.modules.filter(function(x){return x.id!==id;});S.slots=S.slots.filter(function(x){return x.mod!==id;});S.tasks=S.tasks.filter(function(x){return x.mod!==id;});S.exams=S.exams.filter(function(x){return x.mod!==id;});S.cards=S.cards.filter(function(x){return x.mod!==id;});S.sessions=S.sessions.filter(function(x){return x.mod!==id;});
@@ -952,7 +912,7 @@ function moreMenu(){
   $('.sh-f').style.display='none';
 }
 function newMenu(){
-  var items=[['newtask','Abgabe','check'],['newslot','Termin im Stundenplan','cal'],['newexam','Prüfung','exam'],['newcard','Karteikarte','cards'],['newnote','Notiz','note'],['newfile','Datei','folder'],['newmod','Modul','layers'],['newcontact','Kontakt','users']];
+  var items=[['newtask','Abgabe','check'],['newslot','Termin im Stundenplan','cal'],['newevent','Privater Termin','pin'],['newexam','Prüfung','exam'],['newcard','Karteikarte','cards'],['newnote','Notiz','note'],['newfile','Datei','folder'],['newmod','Modul','layers'],['newcontact','Kontakt','users']];
   modal('Neu anlegen','<div class="tilegrid">'+items.map(function(x){return '<button type="button" class="item tile" data-act="'+x[0]+'" data-close>'+ic(x[2])+'<span class="grow t">'+x[1]+'</span></button>';}).join('')+'</div>',null,{nofocus:true});
   $('.sh-f').style.display='none';
 }
@@ -978,6 +938,8 @@ document.addEventListener('keydown',function(e){
 function actMore(a,d){
   switch(a){
    case 'more':moreMenu();return true;
+   case 'calsel':calSel=d.d;render();return true;
+   case 'newevent':eventForm(null,d.date);return true;case 'editevent':eventForm(d.id);return true;
    case 'newcontact':contactForm(null,d);return true;case 'editcontact':contactForm(d.id);return true;
    case 'cfilter':contactF=d.f;render();return true;
    case 'newexam':examForm();return true;case 'editexam':examForm(d.id);return true;
@@ -1005,6 +967,138 @@ function actMore(a,d){
   return false;
 }
 
+/* ======================================================================
+   Private Termine, Tagesansicht im Kalender, Module über zwei Semester
+   ====================================================================== */
+var calSel=null;
+var EV_REPEAT=[['','einmalig'],['weekly','jede Woche'],['biweekly','alle 2 Wochen'],['monthly','jeden Monat']];
+var DS7=['Mo','Di','Mi','Do','Fr','Sa','So'];
+
+function inSem(m,id){return m.sem===id||m.sem2===id;}
+function semLabel(m){return semName(m.sem)+(m.sem2?' + '+semName(m.sem2):'');}
+function minToStr(m){m=Math.max(0,Math.min(1439,m));return pad(Math.floor(m/60))+':'+pad(m%60);}
+function evEnd(e){return e.end||minToStr(toMin(e.start)+60);}
+function evTime(e){return e.start?(e.start+(e.end?'–'+e.end:'')):'ganztägig';}
+function occurs(e,d){
+  var ds=todayStr(d);
+  if(!e.date||ds<e.date)return false;
+  if(e.until&&ds>e.until)return false;
+  if(ds===e.date)return true;
+  var r=e.repeat||'';if(!r)return false;
+  var a=new Date(e.date+'T12:00'),b=new Date(d.getFullYear(),d.getMonth(),d.getDate(),12);
+  var n=Math.round((b-a)/864e5);
+  if(r==='weekly')return n%7===0;
+  if(r==='biweekly')return n%14===0;
+  if(r==='monthly')return a.getDate()===b.getDate();
+  return false;
+}
+function eventsOn(date){
+  return S.events.filter(function(e){return occurs(e,date);}).sort(function(a,b){return String(a.start||'').localeCompare(String(b.start||''));});
+}
+function slotRow(s,extra){
+  var m=modById(s.mod);
+  return '<button class="item" data-act="editslot" data-id="'+s.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.short)+' · '+esc(s.type)+'</div><div class="s">'+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+'</div></span>'+(extra||'')+'</button>';
+}
+function evRow(e){
+  return '<button class="item" data-act="editevent" data-id="'+e.id+'"><span class="dot" style="background:'+(e.color||'var(--accent)')+'"></span><span class="grow"><div class="t">'+esc(e.title)+'</div><div class="s">'+evTime(e)+(e.place?' · '+esc(e.place):'')+'</div></span><span class="pill">privat</span></button>';
+}
+function todayRows(now,nowMin){
+  var rows=[];
+  slotsOn(now).forEach(function(s){var cur=toMin(s.start)<=nowMin&&nowMin<toMin(s.end);rows.push({k:s.start,h:slotRow(s,cur?'<span class="pill acc">läuft</span>':'')});});
+  eventsOn(now).forEach(function(e){rows.push({k:e.start||'00:00',h:evRow(e)});});
+  rows.sort(function(a,b){return a.k.localeCompare(b.k);});
+  return rows.length?rows.map(function(r){return r.h;}).join(''):'<div class="empty">Heute ist frei.</div>';
+}
+function dayRows(date){
+  var rows=[],ids=modIds();
+  slotsOn(date).forEach(function(s){rows.push({k:s.start,h:slotRow(s)});});
+  eventsOn(date).forEach(function(e){rows.push({k:e.start||'00:00',h:evRow(e)});});
+  tasks().forEach(function(t){if(dayDiff(new Date(t.due),date)!==0)return;var m=modById(t.mod),d=new Date(t.due);
+    rows.push({k:pad(d.getHours())+':'+pad(d.getMinutes()),h:'<button class="item" data-act="edittask" data-id="'+t.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(t.title)+'</div><div class="s">'+esc(m.short)+' · Frist '+pad(d.getHours())+':'+pad(d.getMinutes())+' Uhr</div></span><span class="pill '+(isOpen(t)?'warn':'good')+'">Abgabe</span></button>'});});
+  S.exams.forEach(function(e){if(ids.indexOf(e.mod)<0)return;var m=modById(e.mod);
+    if(e.date&&dayDiff(new Date(e.date),date)===0){var d=new Date(e.date);rows.push({k:pad(d.getHours())+':'+pad(d.getMinutes()),h:'<button class="item" data-act="editexam" data-id="'+e.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.short)+' · '+esc(e.kind||'Prüfung')+'</div><div class="s">'+pad(d.getHours())+':'+pad(d.getMinutes())+' Uhr'+(e.room?' · '+esc(e.room):'')+'</div></span><span class="pill bad">Prüfung</span></button>'});}
+    if(!e.registered&&e.regDeadline&&dayDiff(new Date(e.regDeadline),date)===0)rows.push({k:'23:59',h:'<button class="item" data-act="editexam" data-id="'+e.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">Anmeldefrist '+esc(m.short)+' · '+esc(e.kind||'Prüfung')+'</div><div class="s">heute anmelden</div></span><span class="pill warn">Frist</span></button>'});
+  });
+  rows.sort(function(a,b){return a.k.localeCompare(b.k);});
+  return rows;
+}
+function dayCard(){
+  var sel=calSel?new Date(calSel+'T12:00'):new Date(),rows=dayRows(sel);
+  return '<div class="card"><h3><span>'+sel.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+'</span><button class="btn sm" data-act="newevent" data-date="'+todayStr(sel)+'">'+ic('plus2')+' Privat</button></h3><div class="list">'+(rows.length?rows.map(function(r){return r.h;}).join(''):'<div class="empty">An diesem Tag steht nichts an.</div>')+'</div></div>';
+}
+function calendar(all){
+  var now=new Date();if(!calM)calM=new Date(now.getFullYear(),now.getMonth(),1);
+  var first=calM,start=monday(first),cells='',fr={},selStr=calSel||todayStr();
+  all.forEach(function(t){if(isOpen(t)){var d=new Date(t.due);fr[d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()]=1;}});
+  S.exams.forEach(function(e){if(!modById(e.mod))return;[e.date,(e.registered?'':e.regDeadline)].forEach(function(x){if(x){var d=new Date(x);fr[d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()]=1;}});});
+  for(var i=0;i<42;i++){var d=addDays(start,i);if(i>=35&&d.getMonth()!==first.getMonth())break;
+    var key=d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate(),ds=todayStr(d);
+    var cl='d'+(d.getMonth()!==first.getMonth()?' o':'')+(dayDiff(d,now)===0?' t':'')+(fr[key]?' f':'')+(eventsOn(d).length?' p':'')+(ds===selStr?' s':'');
+    cells+='<button type="button" class="'+cl+'" data-act="calsel" data-d="'+ds+'" aria-pressed="'+(ds===selStr)+'" aria-label="'+d.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+'">'+d.getDate()+'</button>';}
+  return '<div class="cal"><div class="cal-h"><button class="ibtn" data-act="calprev" aria-label="Vorheriger Monat">'+ic('left')+'</button><span>'+first.toLocaleDateString('de-DE',{month:'long',year:'numeric'})+'</span><button class="ibtn" data-act="calnext" aria-label="Nächster Monat">'+ic('right')+'</button></div><div class="cal-g">'+DS7.map(function(x){return '<div class="w">'+x+'</div>';}).join('')+cells+'</div><div class="legend" style="margin-top:10px;flex-wrap:wrap"><span class="r">Abgabe, Prüfung, Frist</span><span class="p">Privat</span></div></div>';
+}
+function eventForm(id,datePre){
+  var e=id?S.events.filter(function(x){return x.id===id;})[0]:{title:'',date:datePre||todayStr(),start:'',end:'',place:'',repeat:'',until:'',note:'',color:COLORS[5]};
+  modal(id?'Privaten Termin bearbeiten':'Privater Termin',
+   fld('Titel','title','text',e.title,'required maxlength="80" placeholder="z. B. Zahnarzt, Sport, Geburtstag"')+
+   '<div class="frow">'+fld('Datum','date','date',e.date,'required')+sel('Wiederholung','repeat',EV_REPEAT,e.repeat||'')+'</div>'+
+   '<div class="frow">'+fld('Beginn (optional)','start','time',e.start||'')+fld('Ende (optional)','end','time',e.end||'')+'</div>'+
+   '<div class="frow">'+fld('Ort','place','text',e.place||'')+fld('Wiederholen bis (optional)','until','date',e.until||'')+'</div>'+
+   '<label class="fl">Notiz<textarea class="fi" name="note">'+esc(e.note||'')+'</textarea></label>'+
+   '<div class="fl">Farbe<div class="swatches">'+COLORS.map(function(c,i){return '<label><input type="radio" name="color" value="'+c+'"'+(c===(e.color||COLORS[5])?' checked':'')+'><span style="background:'+c+'" title="Farbe '+(i+1)+'"></span></label>';}).join('')+'</div></div>',
+   function(fd){
+     var st=fd.get('start'),en=fd.get('end');
+     if(!st)en='';
+     if(st&&en&&toMin(en)<=toMin(st)){toast('Das Ende muss nach dem Beginn liegen.');return false;}
+     var o={id:id||uid(),title:fd.get('title').trim(),date:fd.get('date'),start:st,end:en,place:fd.get('place').trim(),repeat:fd.get('repeat'),until:fd.get('until'),note:fd.get('note'),color:fd.get('color')||COLORS[5]};
+     if(!o.title||!o.date)return false;
+     if(o.until&&o.until<o.date){toast('„Bis“ liegt vor dem Datum.');return false;}
+     if(id)S.events=S.events.map(function(x){return x.id===id?o:x;});else S.events.push(o);
+     calSel=o.date;touch();render();},
+   id?{del:function(){S.events=S.events.filter(function(x){return x.id!==id;});touch();render();}}:{});
+}
+
+/* ---------- Stundenplan (mit privaten Terminen, heutiger Tag hervorgehoben) ---------- */
+function vPlan(){
+  var now=new Date(),mon=addDays(monday(now),planWeek*7),wk=isoWeek(mon),nowMin=now.getHours()*60+now.getMinutes();
+  var ss=slots(),cols=ss.some(function(s){return s.day===5;})?6:5;
+  for(var q=5;q<7;q++){if(eventsOn(addDays(mon,q)).length)cols=Math.max(cols,q+1);}
+  var lo=8,hi=18;
+  ss.forEach(function(s){lo=Math.min(lo,Math.floor(toMin(s.start)/60));hi=Math.max(hi,Math.ceil(toMin(s.end)/60));});
+  for(var q2=0;q2<cols;q2++)eventsOn(addDays(mon,q2)).forEach(function(e){if(e.start){lo=Math.min(lo,Math.floor(toMin(e.start)/60));hi=Math.max(hi,Math.ceil(toMin(evEnd(e))/60));}});
+  hi=Math.min(hi,24);
+  var PX=54,H=(hi-lo)*PX,head='<div></div>',body='',hrs='';
+  for(var h=lo;h<=hi;h++){hrs+='<span style="top:'+((h-lo)*PX)+'px">'+pad(h)+':00</span>';}
+  function ov(a1,a2,b1,b2){return a1<b2&&b1<a2;}
+  for(var d=0;d<cols;d++){
+    var date=addDays(mon,d),today=dayDiff(date,now)===0,sl=slotsOn(date),evs=eventsOn(date),timed=evs.filter(function(e){return e.start;});
+    var ad=evs.filter(function(e){return !e.start;}).map(function(e){return '<em class="ad" style="--c:'+(e.color||'var(--accent)')+'" title="'+esc(e.title)+'">'+esc(e.title)+'</em>';}).join('');
+    head+='<div class="hd'+(today?' today':'')+'"'+(today?' aria-current="date"':'')+'>'+DS7[d]+'<small>'+pad(date.getDate())+'.'+pad(date.getMonth()+1)+'.</small>'+ad+'</div>';
+    var lines='';for(var h2=lo;h2<hi;h2++)lines+='<div class="hl" style="top:'+((h2-lo)*PX)+'px"></div>';
+    var blocks=sl.map(function(s){var m=modById(s.mod),top=(toMin(s.start)-lo*60)/60*PX,hh=(toMin(s.end)-toMin(s.start))/60*PX;
+      var half=timed.some(function(e){return ov(toMin(s.start),toMin(s.end),toMin(e.start),toMin(evEnd(e)));});
+      return '<button class="blk'+(s.bi?' bi':'')+'" data-act="editslot" data-id="'+s.id+'" style="top:'+top+'px;height:'+Math.max(hh-2,28)+'px;background:'+m.color+(half?';right:calc(50% + 2px)':'')+'"><b>'+esc(m.short)+' · '+esc(s.type)+'</b><span>'+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+'</span></button>';}).join('');
+    var eb=timed.map(function(e){var top=(toMin(e.start)-lo*60)/60*PX,hh=(toMin(evEnd(e))-toMin(e.start))/60*PX;
+      var half=sl.some(function(s){return ov(toMin(s.start),toMin(s.end),toMin(e.start),toMin(evEnd(e)));});
+      return '<button class="blk ev" data-act="editevent" data-id="'+e.id+'" style="top:'+top+'px;height:'+Math.max(hh-2,28)+'px;--c:'+(e.color||'var(--accent)')+(half?';left:calc(50% + 2px)':'')+'"><b>'+esc(e.title)+'</b><span>'+e.start+(e.end?'–'+e.end:'')+(e.place?' · '+esc(e.place):'')+'</span></button>';}).join('');
+    var nl=(today&&nowMin>=lo*60&&nowMin<=hi*60)?'<div class="nowline" style="top:'+((nowMin-lo*60)/60*PX)+'px"><i></i></div>':'';
+    body+='<div class="dcol'+(today?' today':'')+'" style="height:'+H+'px">'+lines+blocks+eb+nl+'</div>';
+  }
+  var grid='<div class="grid" style="--cols:'+cols+'">'+head+'<div class="hours" style="height:'+H+'px">'+hrs+'</div>'+body+'</div>';
+  // Handy: Tagesliste
+  if(planDay<0){var wd=(now.getDay()+6)%7;planDay=wd<cols?wd:0;}
+  if(planDay>=cols)planDay=0;
+  var tabs='<div class="tabs" role="group" aria-label="Wochentag">'+DS7.slice(0,cols).map(function(n,i){var dt=addDays(mon,i),td=dayDiff(dt,now)===0;return '<button data-act="planday" data-i="'+i+'" class="'+(td?'today':'')+'" aria-pressed="'+(planDay===i)+'">'+n+'<small>'+pad(dt.getDate())+'.'+pad(dt.getMonth()+1)+'.</small></button>';}).join('')+'</div>';
+  var pdate=addDays(mon,planDay),rows=[];
+  slotsOn(pdate).forEach(function(s){var m=modById(s.mod);rows.push({k:s.start,h:'<button class="item" data-act="editslot" data-id="'+s.id+'" style="border-left:5px solid '+m.color+'"><span class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+esc(s.type)+' · '+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+(s.bi?' · alle 2 Wochen':'')+'</div></span></button>'});});
+  eventsOn(pdate).forEach(function(e){rows.push({k:e.start||'00:00',h:'<button class="item" data-act="editevent" data-id="'+e.id+'" style="border-left:5px dashed '+(e.color||'var(--accent)')+'"><span class="grow"><div class="t">'+esc(e.title)+'</div><div class="s">'+evTime(e)+(e.place?' · '+esc(e.place):'')+'</div></span><span class="pill">privat</span></button>'});});
+  rows.sort(function(a,b){return a.k.localeCompare(b.k);});
+  var list='<div class="list">'+(rows.length?rows.map(function(r){return r.h;}).join(''):'<div class="empty">Kein Termin an diesem Tag.</div>')+'</div>';
+  return '<div class="ph"><div><h1>Stundenplan</h1><p>Wöchentlich gleich, zweiwöchige Übungen erscheinen nur in der passenden KW. Private Termine sind gestrichelt.</p></div><div class="acts"><button class="btn" data-act="newevent">'+ic('plus2')+' Privat</button><button class="btn pri" data-act="newslot">'+ic('plus2')+' Termin</button></div></div>'+
+   '<div class="weekbar"><button class="ibtn" data-act="wprev" aria-label="Vorherige Woche">'+ic('left')+'</button><span class="wk">KW '+wk+' · '+pad(mon.getDate())+'.'+pad(mon.getMonth()+1)+'.</span><button class="ibtn" data-act="wnext" aria-label="Nächste Woche">'+ic('right')+'</button>'+(planWeek?'<button class="btn sm" data-act="wnow">Diese Woche</button>':'')+'</div>'+
+   '<div class="card">'+(mods().length||S.events.length?grid+'<div class="daylist">'+tabs+list+'</div>':'<div class="empty">Lege zuerst unter „Module“ ein Modul an.</div>')+'</div>';
+}
+
 /* ---------- Ereignisse ---------- */
 document.addEventListener('click',function(e){
   var c=e.target.closest('[data-close]');
@@ -1026,7 +1120,7 @@ function act(a,d){
    case 'newsem':semForm();break;case 'editsem':semForm(d.id);break;
    case 'toggletask':var t=S.tasks.filter(function(x){return x.id===d.id;})[0];t.status=isOpen(t)?'abgegeben':'offen';touch();render();break;
    case 'tfilter':taskF=d.f;render();break;
-   case 'wprev':planWeek--;render();break;case 'wnext':planWeek++;render();break;case 'wnow':planWeek=0;render();break;
+   case 'wprev':planWeek--;render();break;case 'wnext':planWeek++;render();break;case 'wnow':planWeek=0;planDay=-1;render();break;
    case 'planday':planDay=+d.i;render();break;
    case 'calprev':calM=new Date(calM.getFullYear(),calM.getMonth()-1,1);render();break;
    case 'calnext':calM=new Date(calM.getFullYear(),calM.getMonth()+1,1);render();break;

@@ -446,3 +446,29 @@ button.stat:hover{border-color:color-mix(in srgb,var(--fg) 25%,transparent)}
 @media (prefers-reduced-motion:reduce){.fc-in{transition:none}.ring .rp{transition:none}}
 
 .trow.ex.done .tt{text-decoration:none;color:var(--fg)}
+
+/* ---------- Kalender-Tage, private Termine, heutiger Tag ---------- */
+.cal-g button.d{border:0;background:none;font:inherit;padding:0;cursor:pointer;transition:background-color .15s,box-shadow .15s,transform .15s}
+.cal-g button.d:hover{background:var(--field);color:var(--fg)}
+.cal-g button.d.t:hover{background:var(--accent);filter:brightness(1.08)}
+.cal-g .d.s{box-shadow:0 0 0 2px var(--fg) inset;color:var(--fg);font-weight:700}
+.cal-g .d.t.s{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--accent);color:var(--accent-fg)}
+.cal-g .d.p::before{content:"";position:absolute;bottom:3px;left:calc(50% - 7px);width:5px;height:5px;border-radius:50%;background:#5db4ff}
+.cal-g .d.f::after{left:calc(50% + 2px)}
+.cal-g .d.f:not(.p)::after{left:calc(50% - 2.5px)}
+.cal-g .d.p:not(.f)::before{left:calc(50% - 2.5px)}
+.legend span.r::before{background:var(--red)}
+.legend span.p::before{background:#5db4ff}
+.blk.ev{background:color-mix(in srgb,var(--c) 22%,var(--card-solid));border:2px dashed var(--c);color:var(--fg)}
+.blk.ev span{color:var(--muted)}
+.grid .hd{border-radius:12px}
+.grid .hd.today{background:var(--accent);color:var(--accent-fg);box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 35%,transparent)}
+.grid .hd.today small{color:inherit;opacity:.85}
+.grid .hd .ad{display:block;font-style:normal;font-size:10.5px;font-weight:600;margin-top:4px;padding:2px 6px;border-radius:6px;background:color-mix(in srgb,var(--c) 28%,transparent);color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcol.today{background:color-mix(in srgb,var(--accent) 8%,transparent);border-left:2px solid var(--accent);border-radius:0 12px 12px 0}
+.nowline{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--red);z-index:3;pointer-events:none}
+.nowline i{position:absolute;left:-5px;top:-6px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+.tabs button.today:not([aria-pressed="true"]){border-color:var(--accent);color:var(--accent)}
+.tabs button.today::after{content:"";display:block;width:5px;height:5px;border-radius:50%;background:currentColor;margin:3px auto 0}
+.card h3>span:first-child{min-width:0;overflow-wrap:anywhere}
+.grid .hd{align-self:start}
