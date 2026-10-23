@@ -108,7 +108,7 @@ async function pull(){
     if((d.updated||0)>(S.updated||0))applyRemote(d);
     else if((d.updated||0)<(S.updated||0)){queueSave();return;}
     setSync('sync');
-  }else{flush();}
+  }else{featInit();flush();}
 }
 function subscribe(){
   if(channel){supabase.removeChannel(channel);channel=null;}
@@ -179,11 +179,14 @@ var MEHRV=['mehr','lernen','java','abgaben','pruefungen','noten','planung','modu
 var BACKV=['lernen','java','abgaben','pruefungen','noten','planung','module','kontakte'];
 var VIEWS=['start','plan','abgaben','pruefungen','lernen','wissen','noten','planung','module','kontakte','profil','mehr','java'];
 var setTab='konto';
-function go(v){closeModal();view=v;try{history.replaceState(null,'','#'+v);}catch(e){}paintNav();render(true);window.scrollTo(0,0);}
+function go(v){closeModal();if(!viewOn(v))v='start';view=v;try{history.replaceState(null,'','#'+v);}catch(e){}paintNav();render(true);window.scrollTo(0,0);}
 function paintNav(){
   var g=GROUP[view]||view;
-  $('#links').innerHTML=NAV.map(function(n){return '<button data-go="'+n[0]+'"'+(g===n[0]?' aria-current="page"':'')+'>'+ic(n[2])+'<span>'+n[1]+'</span></button>';}).join('');
+  $('#links').innerHTML=NAV.filter(function(n){return n[0]==='start'||fOn(n[0]);}).map(function(n){return '<button data-go="'+n[0]+'"'+(g===n[0]?' aria-current="page"':'')+'>'+ic(n[2])+'<span>'+n[1]+'</span></button>';}).join('');
   var t=[['start','Home','home'],['plan','Stundenplan','cal'],['new','Hinzufügen','plus2'],['wissen','Wissen & Notizen','folder'],['mehr','Mehr','dots']];
+  t=t.filter(function(n){return n[0]==='start'||n[0]==='new'||n[0]==='mehr'||fOn(n[0]);});
+  $('#tabs').style.gridTemplateColumns='repeat('+t.length+',1fr)';
+  var bs=$('#bsearch');if(bs)bs.hidden=!fOn('wissen');
   $('#tabs').innerHTML=t.map(function(n){
     var cur=n[0]==='new'?false:n[0]==='mehr'?MEHRV.indexOf(view)>-1:g===n[0];
     return '<button data-go="'+n[0]+'"'+(n[0]==='new'?' class="plus"':'')+(cur?' aria-current="page"':'')+' aria-label="'+n[1]+'">'+(n[0]==='new'?'<i>'+ic(n[2])+'</i>':ic(n[2]))+'<span>'+n[1]+'</span></button>';}).join('');
@@ -195,6 +198,7 @@ function curTheme(){return document.documentElement.dataset.theme==='light'?'lig
 
 /* ---------- Views ---------- */
 function render(anim){
+  if(!viewOn(view))view='start';
   var v=$('#view');
   var html=({java:vJava,mehr:vHub,start:vStart,plan:vPlan,abgaben:vTasks,wissen:vFiles,module:vMods,profil:vProfile,noten:vNoten,planung:vPlanung,kontakte:vContacts,pruefungen:vExams,lernen:vLernen})[view]();
   var demo=S.demo?'<div class="demo"><span>Das sind Beispieldaten. Du kannst alles bearbeiten oder löschen.</span><button class="btn sm" data-act="cleardemo">Beispieldaten entfernen</button></div>':'';
@@ -221,20 +225,20 @@ function vHub(){
   var nm=mods().length,nc=S.contacts.filter(function(c){return c.type==='dozent';}).length,sem=S.semesters.filter(function(x){return x.id===S.semId;})[0];
   return '<div class="ph"><div><h1>Mehr</h1><p>Alles rund ums Studium an einem Ort.</p></div></div>'+
    '<div class="hubgrid">'+
-   hubTile('check','Abgaben & Prüfungen','Fristen und Countdown. '+d1,'abgaben',[['Abgaben','abgaben'],['Prüfungen','pruefungen']])+
-   hubTile('grad','Lernen & ECTS','Notenspiegel und Fortschritt: '+Math.round(st.ects)+' von '+Tg+' ECTS'+(st.w?', Schnitt '+fmtGrade(st.avg):''),'noten',[['Notenspiegel','noten'],['Karteikarten','lernen','karten'],['Lernzeit','lernen','zeit']])+
-   hubTile('code','Java','Notizen, Code und Übungen zum Nachlesen','java')+
-   hubTile('cards','Lernen','Karteikarten und Lernzeit-Timer','lernen',[['Karteikarten','lernen','karten'],['Lernzeit','lernen','zeit']])+
-   hubTile('grid','Semesterplanung','Module auf Semester verteilen und ECTS im Blick behalten','planung')+
+   ((fOn('abgaben')||fOn('pruefungen'))?hubTile('check',fOn('abgaben')&&fOn('pruefungen')?'Abgaben & Prüfungen':fOn('abgaben')?'Aufgaben & Abgaben':'Prüfungen','Fristen und Countdown. '+d1,fOn('abgaben')?'abgaben':'pruefungen',[['Abgaben','abgaben'],['Prüfungen','pruefungen']].filter(function(l){return fOn(l[1]);}).length>1?[['Abgaben','abgaben'],['Prüfungen','pruefungen']]:null):'')+
+   (fOn('pruefungen')?hubTile('grad','Noten & ECTS','Notenspiegel und Fortschritt: '+Math.round(st.ects)+' von '+Tg+' ECTS'+(st.w?', Schnitt '+fmtGrade(st.avg):''),'noten'):'')+
+   (fOn('java')?hubTile('code','Java','Notizen, Code und Übungen zum Nachlesen','java'):'')+
+   (fOn('lernen')?hubTile('cards','Lernen','Karteikarten und Lernzeit-Timer','lernen',[['Karteikarten','lernen','karten'],['Lernzeit','lernen','zeit']]):'')+
+   (fOn('planung')?hubTile('grid','Semesterplanung','Module auf Semester verteilen und ECTS im Blick behalten','planung'):'')+
    hubTile('layers','Module',nm+' Module in '+esc(sem?sem.name:'diesem Semester'),'module')+
-   hubTile('users','Dozenten & Kontakte',nc+' Dozenten, Räume und Sprechzeiten','kontakte')+
+   (fOn('kontakte')?hubTile('users','Dozenten & Kontakte',nc+' Dozenten, Räume und Sprechzeiten','kontakte'):'')+
    hubTile('gear','Einstellungen','Profil, Studium und Datenbank','profil')+
    '</div>';
 }
 function quickCard(){
-  var q=[['newnote','Notiz','note'],['newtask','Abgabe','check'],['newslot','Termin','cal'],['newfile','Upload','upload']];
+  var q=[['newnote','Notiz','note','wissen'],['newtask','Abgabe','check','abgaben'],['newslot','Termin','cal','plan'],['newfile','Upload','upload','wissen']].filter(function(x){return fOn(x[3]);});
   return '<div class="card"><h3>Schnellzugriff</h3><div class="qgrid">'+q.map(function(x){return '<button type="button" class="item tile" data-act="'+x[0]+'">'+ic(x[2])+'<span class="grow t">'+x[1]+'</span></button>';}).join('')+'</div>'+
-   '<div class="chips" style="margin:12px 0 0"><button class="chip" data-go="plan">Stundenplan</button><button class="chip" data-go="wissen">Wissen</button><button class="chip" data-go="abgaben">Abgaben</button><button class="chip" data-go="pruefungen">Prüfungen</button></div></div>';
+   '<div class="chips" style="margin:12px 0 0">'+[['plan','Stundenplan'],['wissen','Wissen'],['abgaben','Abgaben'],['pruefungen','Prüfungen'],['lernen','Lernen'],['java','Java']].filter(function(x){return fOn(x[0]);}).map(function(x){return '<button class="chip" data-go="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div></div>';
 }
 function stagger(v){
   var els=v.querySelectorAll('.card,.trow,.remind,.item,.demo');
@@ -283,17 +287,17 @@ function vStart(){
    '<div class="card stat"><div class="k"><span>Punkte</span></div><div class="v">'+(pct==null?'–':pct+'<small>%</small>')+'</div><div class="viz">'+barsP+'</div></div></div>';
 
   // Erinnerungen
-  var rem=open.filter(function(t){var ms=new Date(t.due)-now;return t.remind>0&&ms<=t.remind*60000;}).slice(0,3);
+  var rem=!fOn('abgaben')?[]:open.filter(function(t){var ms=new Date(t.due)-now;return t.remind>0&&ms<=t.remind*60000;}).slice(0,3);
   var remH=rem.map(function(t){var c=countdown(t.due);return '<div class="remind">'+ic('clock')+'<span class="grow" style="flex:1"><b>'+esc(modById(t.mod).short)+' · '+esc(t.title)+'</b><div class="s" style="color:var(--muted)">Frist '+fmtDT(new Date(t.due))+' ('+c.t+')</div></span></div>';}).join('');
-  remH+=examRemind(now);
+  if(fOn('pruefungen'))remH+=examRemind(now);
 
   return '<div class="ph"><div><h1>'+g+(P.name?', '+esc(P.name.split(' ')[0]):'')+'</h1><p>'+now.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+' · KW '+isoWeek(now)+' · '+esc(sem?sem.name:'')+(P.study?' · '+esc(P.study):'')+'</p></div></div>'+
-   '<div class="dash"><div class="col">'+(remH?'<div class="list">'+remH+'</div>':'')+'<div class="two">'+feature+quickCard()+'</div>'+stats+stats2()+
-   '<div class="card"><h3>Fristen pro Woche <small>nächste 8 Wochen</small></h3>'+chart(all)+'<div class="legend"><span>offen</span><span class="g">abgegeben</span></div></div>'+
-   '<div class="card"><h3>Heute <button class="btn sm ghost" data-go="plan">Zum Plan</button></h3><div class="list">'+todayList+'</div></div></div>'+
-   '<aside class="col"><div class="card">'+calendar(all)+'</div>'+dayCard()+'<div class="card"><h3>Anstehende Abgaben <button class="btn sm ghost" data-go="abgaben">Alle</button></h3><div class="list">'+
+   '<div class="dash"><div class="col">'+(remH?'<div class="list">'+remH+'</div>':'')+'<div class="two"'+(fOn('plan')?'':' style="grid-template-columns:minmax(0,1fr)"')+'>'+(fOn('plan')?feature:'')+quickCard()+'</div>'+((fOn('plan')||fOn('abgaben'))?stats:'')+stats2()+
+   (fOn('abgaben')?'<div class="card"><h3>Fristen pro Woche <small>nächste 8 Wochen</small></h3>'+chart(all)+'<div class="legend"><span>offen</span><span class="g">abgegeben</span></div></div>':'')+
+   (fOn('plan')?'<div class="card"><h3>Heute <button class="btn sm ghost" data-go="plan">Zum Plan</button></h3><div class="list">'+todayList+'</div></div>':'')+'</div>'+
+   '<aside class="col"><div class="card">'+calendar(all)+'</div>'+dayCard()+(!fOn('abgaben')?'':'<div class="card"><h3>Anstehende Abgaben <button class="btn sm ghost" data-go="abgaben">Alle</button></h3><div class="list">'+
    (open.length?open.slice(0,4).map(function(t){var m=modById(t.mod),c=countdown(t.due);return '<button class="item" data-act="edittask" data-id="'+t.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(t.title)+'</div><div class="s">'+esc(m.short)+' · '+fmtD(new Date(t.due))+'</div></span><span class="pill '+c.c+'">'+c.t+'</span></button>';}).join(''):'<div class="empty">Keine offenen Abgaben.</div>')+
-   '</div></div></aside></div>';
+   '</div></div>')+'</aside></div>';
 }
 
 function chart(all){
@@ -432,6 +436,20 @@ function wUpdate(){
     t.textContent=wFmt(W.total-ms);
   }else t.textContent=wFmt(ms);
 }
+var FEATS=[['plan','Stundenplan & Kalender','Vorlesungen, Übungen und private Termine','cal'],['abgaben','Aufgaben & Abgaben','Fristen, Punkte und Arbeitstimer','check'],['pruefungen','Prüfungen & Noten (ECTS)','Anmeldefristen, Notenschnitt, ECTS-Fortschritt','exam'],['wissen','Wissen & Notizen','Dateien, Skripte und Notizen','folder'],['lernen','Lernen','Karteikarten und Lernzeit-Timer','cards'],['java','Java','Eigene Sammlung zum Nachlesen und Lernen','code'],['planung','Semesterplanung','Module auf Semester verteilen','grid'],['kontakte','Dozenten & Kontakte','Kontaktdaten, Sprechzeiten, Lerngruppen','users']];
+function fOn(k){return !S||!S.features||S.features[k]!==false;}
+function viewOn(v){var k=v==='noten'?'pruefungen':v;var isF=FEATS.some(function(f){return f[0]===k;});return !isF||fOn(k);}
+function featInit(){
+  var m=user&&user.user_metadata&&user.user_metadata.features;
+  if(S&&!S.features&&Array.isArray(m)){S.features={};FEATS.forEach(function(f){S.features[f[0]]=m.indexOf(f[0])>-1;});touch();}
+}
+function featChecks(){
+  return '<div class="fl">Welche Funktionen möchtest du nutzen?<div class="fchk">'+FEATS.map(function(f){return '<label class="fck"><input type="checkbox" name="feat" value="'+f[0]+'" checked><span>'+f[1]+'</span></label>';}).join('')+'</div><span class="hint">Das kannst du später in den Einstellungen ändern.</span></div>';
+}
+function setFeat(){
+  return '<div class="card"><h3>Funktionen</h3><p class="hint" style="margin:0 0 6px">Schalte ab, was du nicht brauchst. Deine Daten bleiben erhalten, auch wenn eine Funktion aus ist. Dashboard, Module und Einstellungen sind immer an.</p>'+
+   FEATS.map(function(f){return '<label class="ftog"><span class="hub-ic">'+ic(f[3])+'</span><span class="grow"><b>'+f[1]+'</b><small>'+f[2]+'</small></span><input type="checkbox" class="sw" data-feat="'+f[0]+'"'+(fOn(f[0])?' checked':'')+'></label>';}).join('')+'</div>';
+}
 function kv(l,v){return '<div class="kv"><span>'+l+'</span><b>'+v+'</b></div>';}
 function mailForm(){
   modal('E-Mail ändern',fld('Neue E-Mail','mail','email','','required autocomplete="email"')+'<p class="hint">Du bekommst eine Bestätigungs-Mail. Erst danach gilt die neue Adresse.</p>',function(fd){
@@ -483,7 +501,7 @@ function setKonto(){
    kv('E-Mail',esc(user?user.email:'')+' <button class="btn sm" data-act="newmail" style="margin-left:8px">Ändern</button>')+
    kv('Passwort','•••••••• <button class="btn sm" data-act="newpw" style="margin-left:8px">Ändern</button>')+
    '<div style="margin-top:12px"><button class="btn danger" data-act="logout">Abmelden</button></div></div>'+
-  '<div class="card"><h3>Design</h3><div class="seg" role="group" aria-label="Design"><button data-act="theme" data-m="dark" aria-pressed="'+(th==='dark')+'">Dunkel</button><button data-act="theme" data-m="light" aria-pressed="'+(th==='light')+'">Hell</button></div></div>';
+  '<div class="card"><h3>Design</h3><div class="sseg" role="group" aria-label="Design"><button data-act="theme" data-m="dark" aria-pressed="'+(th==='dark')+'">Dunkel</button><button data-act="theme" data-m="light" aria-pressed="'+(th==='light')+'">Hell</button></div></div>';
 }
 function setStudium(){
   var sem=S.semesters.filter(function(x){return x.id===S.semId;})[0],ms=mods(),Tg=S.settings.ects||180,per=S.settings.perSem||30;
@@ -492,12 +510,12 @@ function setStudium(){
   var rl=Object.keys(rooms).sort();
   return '<div class="card"><h3>Semester & Module</h3><label class="fl">Aktuelles Semester<select class="fi" id="setSem">'+S.semesters.map(function(x){return '<option value="'+x.id+'"'+(x.id===S.semId?' selected':'')+'>'+esc(x.name)+'</option>';}).join('')+'</select></label>'+
    '<p class="hint" style="margin:10px 0">'+ms.length+' Module in '+esc(sem?sem.name:'diesem Semester')+(ms.length?': '+ms.slice(0,6).map(function(m){return esc(m.short);}).join(', ')+(ms.length>6?' …':''):'')+'</p>'+
-   '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-go="module">Modulliste verwalten</button><button class="btn" data-go="planung">Semesterplanung</button><button class="btn" data-act="newsem">Neues Semester</button></div></div>'+
+   '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-go="module">Modulliste verwalten</button>'+(fOn('planung')?'<button class="btn" data-go="planung">Semesterplanung</button>':'')+'<button class="btn" data-act="newsem">Neues Semester</button></div></div>'+
   '<div class="card"><h3>Studienziel</h3><div class="frow"><label class="fl">ECTS bis zum Abschluss<input class="fi" id="setEcts" type="number" inputmode="numeric" min="1" value="'+Tg+'"></label><label class="fl">ECTS pro Semester<input class="fi" id="setPer" type="number" inputmode="numeric" min="1" value="'+per+'"></label></div></div>'+
-  '<div class="card"><h3>Dozenten & Räume <button class="btn sm ghost" data-go="kontakte">Alle Kontakte</button></h3><div class="list">'+
+  (!fOn('kontakte')?'':'<div class="card"><h3>Dozenten & Räume <button class="btn sm ghost" data-go="kontakte">Alle Kontakte</button></h3><div class="list">'+
    (doz.length?doz.map(function(c){return '<button class="item" data-act="editcontact" data-id="'+c.id+'"><span class="grow"><div class="t">'+esc(c.name)+'</div><div class="s">'+(c.room?esc(c.room):'kein Büro')+(c.hours?' · '+esc(c.hours):'')+(c.email?' · '+esc(c.email):'')+'</div></span></button>';}).join(''):'<div class="empty">Noch keine Dozenten angelegt.</div>')+
    '</div><div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" data-act="newcontact" data-type="dozent">'+ic('plus2')+' Dozent</button></div>'+
-   (rl.length?'<div class="sh" style="margin-top:18px">Räume auf dem Campus</div><div class="chips" style="margin:0">'+rl.map(function(r){return '<span class="pill">'+esc(r)+'</span>';}).join('')+'</div>':'')+'</div>';
+   (rl.length?'<div class="sh" style="margin-top:18px">Räume auf dem Campus</div><div class="chips" style="margin:0">'+rl.map(function(r){return '<span class="pill">'+esc(r)+'</span>';}).join('')+'</div>':'')+'</div>');
 }
 function setDaten(){
   var n=function(a){return a.length;};
@@ -513,8 +531,8 @@ function setDaten(){
    '<div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="exportdata">'+ic('download')+' Exportieren</button><label class="btn" style="cursor:pointer">'+ic('upload')+' Importieren<input type="file" id="impfile" accept=".json,application/json" hidden></label></div></div>';
 }
 function vProfile(){
-  var tabs=[['konto','Profil & Account','Name, E-Mail, Passwort, Design','user'],['studium','Studium & Struktur','Semester, Module, Dozenten, Räume','grad'],['daten','Datenbank & System','Sync, Speicher, Export','db']];
-  var c=setTab==='studium'?setStudium():setTab==='daten'?setDaten():setKonto();
+  var tabs=[['konto','Profil & Account','Name, E-Mail, Passwort, Design','user'],['studium','Studium & Struktur','Semester, Module, Dozenten, Räume','grad'],['feat','Funktionen','Module an- und abschalten','layers'],['daten','Datenbank & System','Sync, Speicher, Export','db']];
+  var c=setTab==='studium'?setStudium():setTab==='daten'?setDaten():setTab==='feat'?setFeat():setKonto();
   return '<div class="ph"><div><h1>Einstellungen</h1><p>Profil, Studium und Daten an einem Ort.</p></div></div>'+
    '<div class="setgrid"><nav class="snav" aria-label="Einstellungen">'+tabs.map(function(t){return '<button data-act="stab" data-t="'+t[0]+'" aria-pressed="'+(setTab===t[0])+'">'+ic(t[3])+'<span><b>'+t[1]+'</b><small>'+t[2]+'</small></span></button>';}).join('')+'</nav><div class="scont">'+c+'</div></div>';
 }
@@ -574,7 +592,7 @@ function showAuth(mode,note){
     if(mode==='register')h+=fld('Name','name','text','','required autocomplete="name" maxlength="60"');
     if(mode!=='recover')h+=fld('E-Mail','email','email','','required autocomplete="email" inputmode="email"');
     if(mode==='login')h+=pwField('password','current-password');
-    if(mode==='register')h+=pwField('password','new-password');
+    if(mode==='register')h+=pwField('password','new-password')+featChecks();
     if(mode==='recover')h+=pwField('password','new-password');
     h+='<div class="autherr" id="autherr" role="alert" hidden></div>';
     h+='<button class="btn pri wide" type="submit" id="authgo">'+{login:'Anmelden',register:'Konto erstellen',forgot:'Link senden',recover:'Passwort speichern'}[mode]+'</button>';
@@ -599,7 +617,7 @@ document.addEventListener('submit',function(e){
   btn.disabled=true;btn.classList.add('busy');btn.textContent='Einen Moment …';
   var p;
   if(authMode==='login')p=supabase.auth.signInWithPassword({email:email,password:pw});
-  else if(authMode==='register')p=supabase.auth.signUp({email:email,password:pw,options:{data:{name:String(fd.get('name')||'').trim()},emailRedirectTo:location.origin}});
+  else if(authMode==='register')p=supabase.auth.signUp({email:email,password:pw,options:{data:{name:String(fd.get('name')||'').trim(),features:fd.getAll('feat')},emailRedirectTo:location.origin}});
   else if(authMode==='forgot')p=supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin});
   else p=supabase.auth.updateUser({password:pw});
   p.then(function(r){
@@ -952,6 +970,11 @@ function examRemind(now){
 function dueAll(){var ids=modIds(),t=todayStr();return S.cards.filter(function(c){return ids.indexOf(c.mod)>-1&&c.due<=t;});}
 function minutesOn(dayStr){var t=0;S.sessions.forEach(function(s){if(todayStr(new Date(s.at))===dayStr)t+=s.min;});return t;}
 function stats2(){
+  var h=stats2raw(),head='<div class="stats">',body=h.slice(head.length,-6);
+  var p=body.split('<button class="card stat" ').slice(1).filter(function(x){return fOn(/^data-go="noten"/.test(x)?'pruefungen':'lernen');}).map(function(x){return '<button class="card stat" '+x;});
+  return p.length?head+p.join('')+'</div>':'';
+}
+function stats2raw(){
   var st=gradeStats(),Tg=S.settings.ects||180,due=dueAll().length,today=minutesOn(todayStr());
   return '<div class="stats">'+
    '<button class="card stat" data-go="noten"><div class="k"><span>ECTS</span></div><div class="v">'+Math.round(st.ects)+'<small>/ '+Tg+'</small></div><div class="viz"><div class="prog"><i style="width:'+Math.min(100,st.ects/Tg*100).toFixed(1)+'%"></i></div></div></button>'+
@@ -1133,10 +1156,11 @@ function noteForm(id,pre){
 
 /* ---------- Menüs ---------- */
 function newMenu(){
-  var big=[['newnote','Notiz','note'],['newtask','Abgabe','check'],['newslot','Termin','cal'],['newfile','Datei-Upload','upload']];
-  var more=[['newevent','Privater Termin','pin'],['newexam','Prüfung','exam'],['newcard','Karteikarte','cards'],['newjava','Java-Eintrag','code'],['newcontact','Kontakt','users'],['newmod','Modul','layers']];
+  function fl(a){return a.filter(function(x){return !x[3]||fOn(x[3]);});}
+  var big=fl([['newnote','Notiz','note','wissen'],['newtask','Abgabe','check','abgaben'],['newslot','Termin','cal','plan'],['newfile','Datei-Upload','upload','wissen']]);
+  var more=fl([['newevent','Privater Termin','pin','plan'],['newexam','Prüfung','exam','pruefungen'],['newcard','Karteikarte','cards','lernen'],['newjava','Java-Eintrag','code','java'],['newcontact','Kontakt','users','kontakte'],['newmod','Modul','layers']]);
   function tl(a){return a.map(function(x){return '<button type="button" class="item tile" data-act="'+x[0]+'" data-close>'+ic(x[2])+'<span class="grow t">'+x[1]+'</span></button>';}).join('');}
-  modal('Schnell hinzufügen','<div class="tilegrid">'+tl(big)+'</div><div class="sh">Weitere</div><div class="tilegrid">'+tl(more)+'</div>',null,{nofocus:true});
+  modal('Schnell hinzufügen',(big.length?'<div class="tilegrid">'+tl(big)+'</div><div class="sh">Weitere</div>':'')+'<div class="tilegrid">'+tl(more)+'</div>',null,{nofocus:true});
   $('.sh-f').style.display='none';
 }
 
@@ -1147,6 +1171,7 @@ document.addEventListener('input',function(e){
 });
 document.addEventListener('change',function(e){
   var t=e.target,id=t.id;
+  if(t.dataset&&t.dataset.feat){S.features=S.features||{};S.features[t.dataset.feat]=t.checked;touch();paintNav();render();return;}
   if(id==='setSem'){S.semId=t.value;touch();paintNav();render();return;}
   if(id==='impfile'){if(t.files&&t.files[0])importData(t.files[0]);t.value='';return;}
   if(id==='calcX'){var x=parseFloat(t.value);if(x>=1&&x<=5){S.settings.grade=x;touch();}}
@@ -1328,17 +1353,28 @@ function vPlan(){
   // Handy: Tagesliste
   if(planDay<0){var wd=(now.getDay()+6)%7;planDay=wd<cols?wd:0;}
   if(planDay>=cols)planDay=0;
-  var tabs='<div class="tabs" role="group" aria-label="Wochentag">'+DS7.slice(0,cols).map(function(n,i){var dt=addDays(mon,i),td=dayDiff(dt,now)===0;return '<button data-act="planday" data-i="'+i+'" class="'+(td?'today':'')+'" aria-pressed="'+(planDay===i)+'">'+n+'<small>'+pad(dt.getDate())+'.'+pad(dt.getMonth()+1)+'.</small></button>';}).join('')+'</div>';
-  var pdate=addDays(mon,planDay),rows=[];
-  slotsOn(pdate).forEach(function(s){var m=modById(s.mod);rows.push({k:s.start,h:'<button class="item" data-act="slotinfo" data-id="'+s.id+'" style="border-left:5px solid '+m.color+'"><span class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+esc(s.type)+' · '+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+(s.bi?' · alle 2 Wochen':'')+'</div>'+(profName(m)?'<div class="s">'+ic('user')+' '+esc(profName(m))+'</div>':'')+'</span></button>'});});
-  eventsOn(pdate).forEach(function(e){rows.push({k:e.start||'00:00',h:'<button class="item" data-act="editevent" data-id="'+e.id+'" style="border-left:5px dashed '+(e.color||'var(--accent)')+'"><span class="grow"><div class="t">'+esc(e.title)+'</div><div class="s">'+evTime(e)+(e.place?' · '+esc(e.place):'')+'</div></span><span class="pill">privat</span></button>'});});
+  var cnt=[];for(var q3=0;q3<cols;q3++){var dq=addDays(mon,q3);cnt.push(slotsOn(dq).length+eventsOn(dq).length);}
+  var tabs='<div class="tabs" role="group" aria-label="Wochentag" style="--n:'+cols+'">'+DS7.slice(0,cols).map(function(n,i){var dt=addDays(mon,i),td=dayDiff(dt,now)===0;return '<button data-act="planday" data-i="'+i+'" class="'+(td?'today':'')+(cnt[i]?' has':'')+'" aria-pressed="'+(planDay===i)+'"><span class="wd">'+n+'</span><small>'+pad(dt.getDate())+'</small></button>';}).join('')+'</div>';
+  var pdate=addDays(mon,planDay),rows=[],isT=dayDiff(pdate,now)===0;
+  slotsOn(pdate).forEach(function(s){var m=modById(s.mod),pf=profName(m),on=isT&&nowMin>=toMin(s.start)&&nowMin<toMin(s.end),past=isT&&nowMin>=toMin(s.end);
+    rows.push({k:s.start,h:'<div class="tl'+(on?' on':'')+(past?' past':'')+'"><div class="tl-t"><b>'+s.start+'</b><span>'+s.end+'</span></div><button class="tl-c" style="--c:'+m.color+'" data-act="slotinfo" data-id="'+s.id+'"><div class="t">'+esc(m.name)+'</div><div class="s">'+esc(s.type)+(s.bi?' · alle 2 Wochen':'')+'</div>'+((s.room||pf)?'<div class="m">'+(s.room?'<span>'+ic('pin')+esc(s.room)+'</span>':'')+(pf?'<span>'+ic('user')+esc(pf)+'</span>':'')+'</div>':'')+'</button></div>'});});
+  eventsOn(pdate).forEach(function(e){var on=isT&&e.start&&nowMin>=toMin(e.start)&&nowMin<toMin(evEnd(e)),past=isT&&e.start&&nowMin>=toMin(evEnd(e));
+    rows.push({k:e.start||'00:00',h:'<div class="tl ev'+(on?' on':'')+(past?' past':'')+'"><div class="tl-t">'+(e.start?'<b>'+e.start+'</b>'+(e.end?'<span>'+e.end+'</span>':''):'<b>ganz-</b><span>tägig</span>')+'</div><button class="tl-c dashed" style="--c:'+(e.color||'var(--accent)')+'" data-act="editevent" data-id="'+e.id+'"><div class="t">'+esc(e.title)+'</div><div class="s">Privat</div>'+(e.place?'<div class="m"><span>'+ic('pin')+esc(e.place)+'</span></div>':'')+'</button></div>'});});
   rows.sort(function(a,b){return a.k.localeCompare(b.k);});
-  var list='<div class="list">'+(rows.length?rows.map(function(r){return r.h;}).join(''):'<div class="empty">Kein Termin an diesem Tag.</div>')+'</div>';
-  return '<div class="ph"><div><h1>Stundenplan & Kalender</h1><p>Wöchentlich gleich, zweiwöchige Übungen erscheinen nur in der passenden KW. Private Termine sind gestrichelt.</p></div><div class="acts"><button class="btn" data-act="newevent">'+ic('plus2')+' Privat</button><button class="btn pri" data-act="newslot">'+ic('plus2')+' Termin</button></div></div>'+
+  var dayh='<div class="dayh">'+pdate.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+(isT?' · heute':'')+'</div>';
+  var list='<div class="tlist">'+(rows.length?rows.map(function(r){return r.h;}).join(''):'<div class="empty tl-empty">Frei an diesem Tag</div>')+'</div>';
+  return '<div class="ph"><div><h1>Stundenplan & Kalender</h1><p class="dsk">Wöchentlich gleich, zweiwöchige Übungen erscheinen nur in der passenden KW. Private Termine sind gestrichelt.</p></div><div class="acts"><button class="btn" data-act="newevent">'+ic('plus2')+' Privat</button><button class="btn pri" data-act="newslot">'+ic('plus2')+' Termin</button></div></div>'+
    '<div class="weekbar"><button class="ibtn" data-act="wprev" aria-label="Vorherige Woche">'+ic('left')+'</button><span class="wk">KW '+wk+' · '+pad(mon.getDate())+'.'+pad(mon.getMonth()+1)+'.</span><button class="ibtn" data-act="wnext" aria-label="Nächste Woche">'+ic('right')+'</button>'+(planWeek?'<button class="btn sm" data-act="wnow">Diese Woche</button>':'')+'</div>'+
-   '<div class="card">'+(mods().length||S.events.length?grid+'<div class="daylist">'+tabs+list+'</div>':'<div class="empty">Lege zuerst unter „Module“ ein Modul an.</div>')+'</div>';
+   '<div class="card plancard">'+(mods().length||S.events.length?grid+'<div class="daylist">'+tabs+dayh+list+'</div>':'<div class="empty">Lege zuerst unter „Module“ ein Modul an.</div>')+'</div>';
 }
 
+var swX=0,swY=0;
+document.addEventListener('touchstart',function(e){var t=e.touches[0];swX=t.clientX;swY=t.clientY;},{passive:true});
+document.addEventListener('touchend',function(e){
+  if(view!=='plan'||!e.target.closest||!e.target.closest('.daylist'))return;
+  var t=e.changedTouches[0],dx=t.clientX-swX,dy=t.clientY-swY;
+  if(Math.abs(dx)>60&&Math.abs(dy)<40){var n=document.querySelectorAll('.daylist .tabs button').length,i=planDay+(dx<0?1:-1);if(i>=0&&i<n){planDay=i;render();}}
+},{passive:true});
 /* ---------- Ereignisse ---------- */
 document.addEventListener('click',function(e){
   var c=e.target.closest('[data-close]');

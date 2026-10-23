@@ -531,9 +531,9 @@ button.stat:hover{border-color:color-mix(in srgb,var(--fg) 25%,transparent)}
 .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .kv:last-of-type{border-bottom:0}
 .kv span{color:var(--muted)}
-.seg{display:inline-flex;gap:4px;padding:4px;border-radius:13px;background:var(--field)}
-.seg button{border:0;background:none;padding:8px 20px;border-radius:10px;font-weight:600;color:var(--muted)}
-.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.sseg{display:inline-flex;gap:4px;padding:4px;border-radius:13px;background:var(--field)}
+.sseg button{border:0;background:none;padding:8px 20px;border-radius:10px;font-weight:600;color:var(--muted)}
+.sseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
 @media (max-width:859px){
   .hubgrid,.setgrid{grid-template-columns:minmax(0,1fr)}
   .snav{position:static;grid-auto-flow:column;grid-auto-columns:minmax(170px,1fr);overflow-x:auto}
@@ -560,6 +560,48 @@ button.stat:hover{border-color:color-mix(in srgb,var(--fg) 25%,transparent)}
 /* Sidebar fest */
 @media (min-width:860px){
   .app::before{content:"";grid-column:1}
-  .side{position:fixed;top:12px;bottom:12px;height:auto;margin-top:0;left:max(16px,calc(50vw - 780px));width:252px;overflow-y:auto}
+  .side{position:fixed;top:12px;bottom:12px;height:auto;margin-top:0;left:16px;width:252px;overflow-y:auto}
   .app .wrap{grid-column:2}
 }
+
+@media (min-width:860px){.app{max-width:none;margin:0}.app .wrap{max-width:1400px;width:100%;margin:0 auto}}
+/* Funktionen */
+.fchk{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0 6px}
+.fck{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;background:var(--field);font-size:13px;font-weight:500;cursor:pointer}
+.fck input{accent-color:var(--accent);width:16px;height:16px}
+.ftog{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.ftog:last-child{border-bottom:0}
+.ftog b{display:block}.ftog small{display:block;color:var(--muted);font-size:12.5px}
+.sw{appearance:none;-webkit-appearance:none;width:46px;height:28px;border-radius:99px;background:var(--field);border:1px solid var(--line);position:relative;flex:none;cursor:pointer;transition:background .2s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--fg);transition:transform .2s}
+.sw:checked{background:var(--accent);border-color:transparent}
+.sw:checked::after{transform:translateX(18px);background:var(--accent-fg)}
+@media (max-width:420px){.fchk{grid-template-columns:minmax(0,1fr)}}
+/* Stundenplan Handy */
+.dayh{font-weight:700;margin:16px 2px 10px}
+.tlist{display:grid;gap:10px}
+.tl{display:grid;grid-template-columns:46px minmax(0,1fr);gap:10px;align-items:stretch}
+.tl-t{display:flex;flex-direction:column;justify-content:space-between;text-align:right;padding:2px 0;font-variant-numeric:tabular-nums}
+.tl-t b{font-size:14px}.tl-t span{font-size:12px;color:var(--muted)}
+.tl-c{text-align:left;display:grid;gap:3px;padding:12px 14px;border-radius:16px;border:1px solid var(--line);border-left:5px solid var(--c);background:var(--card);color:inherit;min-width:0;font:inherit}
+.tl-c.dashed{border-left-style:dashed}
+.tl-c .t{font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.tl-c .s{color:var(--muted);font-size:13px}
+.tl-c .m{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin-top:2px}
+.tl-c .m span{display:inline-flex;gap:5px;align-items:center}
+.tl .ic{width:15px;height:15px}
+.tl.on .tl-c{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 8px 24px color-mix(in srgb,var(--c) 28%,transparent)}
+.tl.past{opacity:.55}
+.tl-empty{padding:34px 0;text-align:center}
+@media (max-width:859px){
+  .dsk{display:none}
+  .ph h1{font-size:36px}
+  .plancard{background:none;border:0;box-shadow:none;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .tabs{display:grid;grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:6px;overflow:visible;padding-bottom:0}
+  .tabs button{min-width:0;padding:8px 0}
+  .tabs button .wd{display:block;font-size:12px;opacity:.8}
+  .tabs button small{font-size:17px;font-weight:700;color:inherit;margin-top:1px}
+  .tabs button.today::after{display:none}
+  .tabs button.has::after{content:"";display:block;width:5px;height:5px;border-radius:50%;background:currentColor;margin:3px auto 0}
+}
+.ftog .grow{flex:1;min-width:0}
