@@ -40,6 +40,7 @@ var IC={
  db:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
  download:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
  upload:'<path d="M12 16V5M7 9l5-5 5 5M5 20h14"/>',
+ code:'<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/>',
  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
 };
 function ic(n,c){return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';}
@@ -170,12 +171,12 @@ function countdown(due){
 }
 
 /* ---------- Icons / Navigation ---------- */
-var NAV=[['start','Dashboard','home'],['plan','Stundenplan & Kalender','cal'],['wissen','Wissen & Notizen','folder'],['abgaben','Aufgaben & Abgaben','check'],['pruefungen','Prüfungen & Noten (ECTS)','exam']];
-var GROUP={noten:'pruefungen',lernen:'wissen'};
+var NAV=[['start','Dashboard','home'],['plan','Stundenplan & Kalender','cal'],['wissen','Wissen & Notizen','folder'],['lernen','Lernen','cards'],['java','Java','code'],['abgaben','Aufgaben & Abgaben','check'],['pruefungen','Prüfungen & Noten (ECTS)','exam']];
+var GROUP={noten:'pruefungen'};
 var SETV=['profil','module','planung','kontakte'];
-var MEHRV=['mehr','abgaben','pruefungen','noten','planung','module','kontakte'];
-var BACKV=['abgaben','pruefungen','noten','planung','module','kontakte'];
-var VIEWS=['start','plan','abgaben','pruefungen','lernen','wissen','noten','planung','module','kontakte','profil','mehr'];
+var MEHRV=['mehr','lernen','java','abgaben','pruefungen','noten','planung','module','kontakte'];
+var BACKV=['lernen','java','abgaben','pruefungen','noten','planung','module','kontakte'];
+var VIEWS=['start','plan','abgaben','pruefungen','lernen','wissen','noten','planung','module','kontakte','profil','mehr','java'];
 var setTab='konto';
 function go(v){closeModal();view=v;try{history.replaceState(null,'','#'+v);}catch(e){}paintNav();render(true);window.scrollTo(0,0);}
 function paintNav(){
@@ -194,7 +195,7 @@ function curTheme(){return document.documentElement.dataset.theme==='light'?'lig
 /* ---------- Views ---------- */
 function render(anim){
   var v=$('#view');
-  var html=({mehr:vHub,start:vStart,plan:vPlan,abgaben:vTasks,wissen:vFiles,module:vMods,profil:vProfile,noten:vNoten,planung:vPlanung,kontakte:vContacts,pruefungen:vExams,lernen:vLernen})[view]();
+  var html=({java:vJava,mehr:vHub,start:vStart,plan:vPlan,abgaben:vTasks,wissen:vFiles,module:vMods,profil:vProfile,noten:vNoten,planung:vPlanung,kontakte:vContacts,pruefungen:vExams,lernen:vLernen})[view]();
   var demo=S.demo?'<div class="demo"><span>Das sind Beispieldaten. Du kannst alles bearbeiten oder löschen.</span><button class="btn sm" data-act="cleardemo">Beispieldaten entfernen</button></div>':'';
   v.classList.toggle('anim',!!anim);
   var back=BACKV.indexOf(view)>-1?'<button class="back" data-go="mehr">'+ic('left')+' Mehr</button>':'';
@@ -204,7 +205,7 @@ function render(anim){
 function groupBar(){
   var items=null;
   if(view==='pruefungen'||view==='noten')items=[['Prüfungen','data-go="pruefungen"',view==='pruefungen'],['Noten & ECTS','data-go="noten"',view==='noten']];
-  else if(view==='wissen'||view==='lernen')items=[['Dateien','data-act="wgo" data-t="dateien"',view==='wissen'&&wissenTab==='dateien'],['Notizen','data-act="wgo" data-t="notizen"',view==='wissen'&&wissenTab==='notizen'],['Lernen','data-go="lernen"',view==='lernen']];
+  else if(view==='wissen')items=[['Dateien','data-act="wgo" data-t="dateien"',wissenTab==='dateien'],['Notizen','data-act="wgo" data-t="notizen"',wissenTab==='notizen']];
   if(!items)return '';
   return '<div class="chips gbar">'+items.map(function(i){return '<button class="chip" '+i[1]+' aria-pressed="'+i[2]+'">'+i[0]+'</button>';}).join('')+'</div>';
 }
@@ -221,6 +222,8 @@ function vHub(){
    '<div class="hubgrid">'+
    hubTile('check','Abgaben & Prüfungen','Fristen und Countdown. '+d1,'abgaben',[['Abgaben','abgaben'],['Prüfungen','pruefungen']])+
    hubTile('grad','Lernen & ECTS','Notenspiegel und Fortschritt: '+Math.round(st.ects)+' von '+Tg+' ECTS'+(st.w?', Schnitt '+fmtGrade(st.avg):''),'noten',[['Notenspiegel','noten'],['Karteikarten','lernen','karten'],['Lernzeit','lernen','zeit']])+
+   hubTile('code','Java','Notizen, Code und Übungen zum Nachlesen','java')+
+   hubTile('cards','Lernen','Karteikarten und Lernzeit-Timer','lernen',[['Karteikarten','lernen','karten'],['Lernzeit','lernen','zeit']])+
    hubTile('grid','Semesterplanung','Module auf Semester verteilen und ECTS im Blick behalten','planung')+
    hubTile('layers','Module',nm+' Module in '+esc(sem?sem.name:'diesem Semester'),'module')+
    hubTile('users','Dozenten & Kontakte',nc+' Dozenten, Räume und Sprechzeiten','kontakte')+
@@ -343,6 +346,41 @@ function vMods(){
 }
 
 
+var javaF='alle';
+var JTOPICS=['Grundlagen','Datentypen & Operatoren','Kontrollstrukturen','Methoden','Klassen & OOP','Vererbung & Interfaces','Collections','Generics','Exceptions','Streams & Lambdas','Dateien & I/O','Sonstiges'];
+var JLVL=['neu','lerne ich','kann ich'];
+function javaTopics(){var t=JTOPICS.slice();S.java.forEach(function(x){if(x.topic&&t.indexOf(x.topic)<0)t.push(x.topic);});return t;}
+function vJava(){
+  var q=(fileF.q||'').toLowerCase(),all=S.java.slice().sort(function(a,b){return (b.added||0)-(a.added||0);});
+  var used=[];all.forEach(function(x){if(used.indexOf(x.topic||'Sonstiges')<0)used.push(x.topic||'Sonstiges');});
+  var f=all.filter(function(x){return (javaF==='alle'||(x.topic||'Sonstiges')===javaF)&&(!q||(x.title+' '+x.text+' '+x.code).toLowerCase().indexOf(q)>-1);});
+  var known=all.filter(function(x){return x.lvl===2;}).length;
+  var chips=['alle'].concat(used).map(function(t){return '<button class="chip" data-act="jfilter" data-t="'+esc(t)+'" aria-pressed="'+(javaF===t)+'">'+(t==='alle'?'Alle':esc(t))+'</button>';}).join('');
+  var cards=f.map(function(x){
+    return '<div class="card jcard"><div class="jh"><div><div class="t">'+esc(x.title)+'</div><div class="hint">'+esc(x.topic||'Sonstiges')+'</div></div><button class="pill'+(x.lvl===2?' good':x.lvl===1?' warn':'')+'" data-act="jstat" data-id="'+x.id+'" title="Status ändern">'+JLVL[x.lvl||0]+'</button></div>'+
+     (x.text?'<div class="jtxt">'+esc(x.text)+'</div>':'')+(x.code?'<pre class="jcode"><code>'+esc(x.code)+'</code></pre>':'')+
+     '<div><button class="btn sm" data-act="editjava" data-id="'+x.id+'">Bearbeiten</button></div></div>';}).join('');
+  return '<div class="ph"><div><h1>Java</h1><p>Deine Sammlung zum Nachlesen und Lernen: Erklärungen und Code. '+(all.length?known+' von '+all.length+' Einträgen sitzen.':'')+'</p></div><div class="acts"><button class="btn pri" data-act="newjava">'+ic('plus2')+' Eintrag</button></div></div>'+
+   '<div class="filters"><input class="fi" id="fq" type="search" placeholder="Suchen in Titel, Text und Code" value="'+esc(fileF.q||'')+'" style="max-width:340px"></div>'+
+   '<div class="chips">'+chips+'</div>'+
+   (cards?'<div class="jgrid">'+cards+'</div>':'<div class="card empty">'+(all.length?'Nichts gefunden.':'Noch keine Einträge. Lege deinen ersten an, zum Beispiel „Schleifen“ mit einem Codebeispiel.')+'</div>');
+}
+function javaForm(id){
+  var x=id?S.java.filter(function(y){return y.id===id;})[0]:{title:'',topic:JTOPICS[0],text:'',code:'',lvl:0};
+  var opts=javaTopics().map(function(t){return [t,t];});
+  modal(id?'Java-Eintrag':'Neuer Java-Eintrag',
+   fld('Titel','title','text',x.title,'required placeholder="z. B. for-Schleife"')+
+   '<div class="frow">'+sel('Thema','topic',opts,x.topic||'Sonstiges')+sel('Status','lvl',JLVL.map(function(l,i){return [i,l];}),x.lvl||0)+'</div>'+
+   fld('Eigenes Thema (optional)','newtopic','text','','placeholder="überschreibt die Auswahl"')+
+   '<label class="fl">Erklärung<textarea class="fi" name="text" rows="5">'+esc(x.text||'')+'</textarea></label>'+
+   '<label class="fl">Code<textarea class="fi jta" name="code" rows="9" spellcheck="false" autocapitalize="off" autocorrect="off">'+esc(x.code||'')+'</textarea></label>',
+   function(fd){
+     var o={id:id||uid(),title:fd.get('title').trim(),topic:(fd.get('newtopic').trim()||fd.get('topic')),lvl:+fd.get('lvl'),text:fd.get('text'),code:fd.get('code'),added:x.added||Date.now()};
+     if(!o.title)return false;
+     if(id)S.java=S.java.map(function(y){return y.id===id?o:y;});else S.java.push(o);
+     javaF='alle';touch();render();},
+   id?{wide:true,del:function(){S.java=S.java.filter(function(y){return y.id!==id;});touch();render();}}:{wide:true});
+}
 function kv(l,v){return '<div class="kv"><span>'+l+'</span><b>'+v+'</b></div>';}
 function mailForm(){
   modal('E-Mail ändern',fld('Neue E-Mail','mail','email','','required autocomplete="email"')+'<p class="hint">Du bekommst eine Bestätigungs-Mail. Erst danach gilt die neue Adresse.</p>',function(fd){
@@ -649,7 +687,7 @@ var LSTM='studium:timer';
 
 /* ---------- Daten-Helfer ---------- */
 function ensureState(o){
-  ['modules','slots','tasks','files','contacts','exams','cards','sessions','notes','events'].forEach(function(k){if(!Array.isArray(o[k]))o[k]=[];});
+  ['modules','slots','tasks','files','contacts','exams','cards','sessions','notes','events','java'].forEach(function(k){if(!Array.isArray(o[k]))o[k]=[];});
   if(!o.settings||typeof o.settings!=='object')o.settings={};
   var s=o.settings;
   if(!(+s.ects>0))s.ects=180;
@@ -1045,7 +1083,7 @@ function noteForm(id,pre){
 /* ---------- Menüs ---------- */
 function newMenu(){
   var big=[['newnote','Notiz','note'],['newtask','Abgabe','check'],['newslot','Termin','cal'],['newfile','Datei-Upload','upload']];
-  var more=[['newevent','Privater Termin','pin'],['newexam','Prüfung','exam'],['newcard','Karteikarte','cards'],['newcontact','Kontakt','users'],['newmod','Modul','layers']];
+  var more=[['newevent','Privater Termin','pin'],['newexam','Prüfung','exam'],['newcard','Karteikarte','cards'],['newjava','Java-Eintrag','code'],['newcontact','Kontakt','users'],['newmod','Modul','layers']];
   function tl(a){return a.map(function(x){return '<button type="button" class="item tile" data-act="'+x[0]+'" data-close>'+ic(x[2])+'<span class="grow t">'+x[1]+'</span></button>';}).join('');}
   modal('Schnell hinzufügen','<div class="tilegrid">'+tl(big)+'</div><div class="sh">Weitere</div><div class="tilegrid">'+tl(more)+'</div>',null,{nofocus:true});
   $('.sh-f').style.display='none';
@@ -1075,6 +1113,9 @@ function actMore(a,d){
   switch(a){
    case 'more':go('mehr');return true;
    case 'slotinfo':slotInfo(d.id);return true;
+   case 'newjava':javaForm();return true;case 'editjava':javaForm(d.id);return true;
+   case 'jfilter':javaF=d.t;render();return true;
+   case 'jstat':var je=S.java.filter(function(x){return x.id===d.id;})[0];if(je){je.lvl=((+je.lvl||0)+1)%3;touch();render();}return true;
    case 'stab':setTab=d.t;render(true);return true;
    case 'theme':setTheme(d.m);return true;
    case 'wgo':wissenTab=d.t;go('wissen');return true;
