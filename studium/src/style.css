@@ -551,3 +551,15 @@ button.stat:hover{border-color:color-mix(in srgb,var(--fg) 25%,transparent)}
 .jcode{margin:0;padding:12px;border-radius:12px;background:#0d0b10;color:#e9e4ee;border:1px solid var(--line);overflow-x:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4}
 .jta{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;white-space:pre;overflow-x:auto}
 @media (max-width:859px){.jgrid{grid-template-columns:minmax(0,1fr)}}
+
+.work{position:fixed;right:20px;bottom:20px;z-index:58;display:flex;align-items:center;gap:14px;flex-wrap:wrap;max-width:min(520px,calc(100vw - 32px));padding:12px 14px;border-radius:18px;background:var(--glass);border:1px solid var(--accent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+.w-t{display:grid;min-width:0;max-width:200px}.w-t b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.w-time{font-family:var(--f-disp);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.w-b{display:flex;gap:6px;align-items:center;margin-left:auto}
+@media (max-width:859px){.work{left:16px;right:16px;max-width:none;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
+/* Sidebar fest */
+@media (min-width:860px){
+  .app::before{content:"";grid-column:1}
+  .side{position:fixed;top:12px;bottom:12px;height:auto;margin-top:0;left:max(16px,calc(50vw - 780px));width:252px;overflow-y:auto}
+  .app .wrap{grid-column:2}
+}

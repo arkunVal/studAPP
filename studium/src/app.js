@@ -41,6 +41,7 @@ var IC={
  download:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
  upload:'<path d="M12 16V5M7 9l5-5 5 5M5 20h14"/>',
  code:'<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/>',
+ play:'<path d="M7 4.5v15l12-7.5z"/>',
  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
 };
 function ic(n,c){return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';}
@@ -318,7 +319,7 @@ function vTasks(){
   var rows=f.map(function(t){var m=modById(t.mod),c=countdown(t.due),done=!isOpen(t);
     return '<div class="trow'+(done?' done':'')+'"><button class="chk" data-act="toggletask" data-id="'+t.id+'" aria-label="Als abgegeben markieren">'+ic('tick')+'</button>'+
     '<button class="item" style="background:none;padding:0" data-act="edittask" data-id="'+t.id+'"><span class="grow"><div class="tt t" style="white-space:normal">'+esc(t.title)+'</div><div class="ts"><span><span class="dot" style="display:inline-block;background:'+m.color+';margin-right:5px"></span>'+esc(m.name)+'</span><span>'+fmtDT(new Date(t.due))+'</span></div></span></button>'+
-    '<div class="right">'+(t.pts!=null&&t.pts!==''?'<span class="pill good">'+t.pts+(t.max?' / '+t.max:'')+' P.</span>':'')+'<span class="pill">'+t.status+'</span>'+(done?'':'<span class="pill '+c.c+'">'+c.t+'</span>')+'</div><span></span></div>';}).join('');
+    '<div class="right">'+(done?'':'<button class="btn sm pri" data-act="wpick" data-id="'+t.id+'">'+ic('play')+' Starten</button>')+(t.pts!=null&&t.pts!==''?'<span class="pill good">'+t.pts+(t.max?' / '+t.max:'')+' P.</span>':'')+'<span class="pill">'+t.status+'</span>'+(done?'':'<span class="pill '+c.c+'">'+c.t+'</span>')+'</div><span></span></div>';}).join('');
   return '<div class="ph"><div><h1>Aufgaben & Abgaben</h1><p>Fristen, Status und Punkte deiner Übungsserien.</p></div><div class="acts"><button class="btn pri" data-act="newtask">'+ic('plus2')+' Abgabe</button></div></div>'+
    '<div class="chips">'+chips+'</div><div class="list">'+(rows||'<div class="card empty">Hier ist nichts.</div>')+'</div>';
 }
@@ -380,6 +381,56 @@ function javaForm(id){
      if(id)S.java=S.java.map(function(y){return y.id===id?o:y;});else S.java.push(o);
      javaF='alle';touch();render();},
    id?{wide:true,del:function(){S.java=S.java.filter(function(y){return y.id!==id;});touch();render();}}:{wide:true});
+}
+/* ---------- Arbeitssitzung (Timer oder Stoppuhr) an einer Aufgabe ---------- */
+var W=null, wTick=null;
+function wKey(){return 'studium:work:'+(user?user.id:'');}
+function wSave(){try{if(W)localStorage.setItem(wKey(),JSON.stringify(W));else localStorage.removeItem(wKey());}catch(e){}}
+function wLoad(){try{var r=JSON.parse(localStorage.getItem(wKey())||'null');W=r&&r.task?r:null;}catch(e){W=null;}wPaint();}
+function wMs(){return W?W.acc+(W.run?Date.now()-W.t0:0):0;}
+function wFmt(ms){ms=Math.max(0,Math.round(ms/1000));var h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),s=ms%60;return (h?h+':'+pad(m):m)+':'+pad(s);}
+function wPick(id){
+  var t=S.tasks.filter(function(x){return x.id===id;})[0];if(!t)return;
+  if(W){toast('Es läuft schon eine Sitzung. Beende sie zuerst.');return;}
+  modal('Arbeit starten','<p class="hint" style="margin:0">'+esc(t.title)+'</p><label class="fl">Minuten für den Timer<input class="fi" id="wmin" type="number" inputmode="numeric" min="1" max="600" value="'+(S.settings.focus||25)+'"></label>'+
+   '<div class="tilegrid"><button type="button" class="item tile" data-act="wbegin" data-id="'+id+'" data-m="timer">'+ic('clock')+'<span class="grow t">Timer</span></button><button type="button" class="item tile" data-act="wbegin" data-id="'+id+'" data-m="stop">'+ic('play')+'<span class="grow t">Stoppuhr</span></button></div>',null,{nofocus:true});
+  $('.sh-f').style.display='none';
+}
+function wBegin(d){
+  var t=S.tasks.filter(function(x){return x.id===d.id;})[0];if(!t)return;
+  var inp=$('#wmin'),min=inp?Math.round(+inp.value):(S.settings.focus||25);
+  if(d.m==='timer'&&!(min>0)){toast('Bitte eine Minutenzahl eingeben.');return;}
+  closeModal();
+  W={task:t.id,mod:t.mod,title:t.title,mode:d.m,total:min*60000,acc:0,t0:Date.now(),run:true,start:Date.now()};
+  wSave();wPaint();
+}
+function wPause(){if(!W)return;if(W.run){W.acc+=Date.now()-W.t0;W.run=false;}else{W.t0=Date.now();W.run=true;}wSave();wPaint();}
+function wStop(save){
+  if(!W)return;var ms=wMs(),min=Math.round(ms/60000);
+  if(save){
+    if(ms>=30000){S.sessions.push({id:uid(),mod:W.mod||'',min:Math.max(1,min),at:W.start||Date.now(),task:W.task});touch();toast(Math.max(1,min)+' Minuten gespeichert');}
+    else toast('Zu kurz, nichts gespeichert');
+  }
+  W=null;wSave();wPaint();if(save)render();
+}
+function wPaint(){
+  var el=$('#work');
+  clearInterval(wTick);wTick=null;
+  if(!W){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='work';el.className='work';document.body.appendChild(el);}
+  var done=W.mode==='timer'&&wMs()>=W.total;
+  el.innerHTML='<div class="w-t"><span class="hint">'+(W.mode==='timer'?'Timer':'Stoppuhr')+'</span><b>'+esc(W.title)+'</b></div><div class="w-time" id="wtime"></div>'+
+   '<div class="w-b">'+(done?'':'<button class="btn sm" data-act="wpause">'+(W.run?'Pause':'Weiter')+'</button>')+'<button class="btn sm pri" data-act="wstop">Fertig</button><button class="ibtn" data-act="wdrop" aria-label="Verwerfen" title="Verwerfen">'+ic('x')+'</button></div>';
+  wUpdate();
+  wTick=setInterval(wUpdate,500);
+}
+function wUpdate(){
+  var t=$('#wtime');if(!W||!t)return;
+  var ms=wMs();
+  if(W.mode==='timer'){
+    if(ms>=W.total){t.textContent='Zeit um';if(W.run){W.acc=W.total;W.run=false;wSave();toast('Timer abgelaufen');wPaint();}return;}
+    t.textContent=wFmt(W.total-ms);
+  }else t.textContent=wFmt(ms);
 }
 function kv(l,v){return '<div class="kv"><span>'+l+'</span><b>'+v+'</b></div>';}
 function mailForm(){
@@ -564,7 +615,7 @@ document.addEventListener('submit',function(e){
 function startSession(u){
   user=u;LS='studium:'+u.id;
   S=ensureState(loadLocal()||emptyState());ensureSem();
-  P=loadProfileLocal();applyAccent(P.accent);tLoad();
+  P=loadProfileLocal();applyAccent(P.accent);tLoad();wLoad();
   hideAuth();paintNav();render(true);
   setSync(navigator.onLine?'speichert':'offline');
   pull();fetchProfile();subscribe();
@@ -572,7 +623,7 @@ function startSession(u){
 function stopSession(){
   var had=!!user;
   if(channel&&supabase){supabase.removeChannel(channel);channel=null;}
-  user=null;LS='studium:anon';S=emptyState();T.running=false;cardSession=null;deckMod='';document.title='Studium';P={name:'',study:'',accent:'#ff6b2c'};applyAccent(P.accent);
+  user=null;LS='studium:anon';S=emptyState();T.running=false;W=null;wPaint();cardSession=null;deckMod='';document.title='Studium';P={name:'',study:'',accent:'#ff6b2c'};applyAccent(P.accent);
   closeModal();
   if(had){view='start';try{history.replaceState(null,'','#start');}catch(e){}}
 }
@@ -1116,6 +1167,11 @@ function actMore(a,d){
    case 'newjava':javaForm();return true;case 'editjava':javaForm(d.id);return true;
    case 'jfilter':javaF=d.t;render();return true;
    case 'jstat':var je=S.java.filter(function(x){return x.id===d.id;})[0];if(je){je.lvl=((+je.lvl||0)+1)%3;touch();render();}return true;
+   case 'wpick':wPick(d.id);return true;
+   case 'wbegin':wBegin(d);return true;
+   case 'wpause':wPause();return true;
+   case 'wstop':wStop(true);return true;
+   case 'wdrop':wStop(false);return true;
    case 'stab':setTab=d.t;render(true);return true;
    case 'theme':setTheme(d.m);return true;
    case 'wgo':wissenTab=d.t;go('wissen');return true;
