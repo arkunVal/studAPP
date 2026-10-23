@@ -33,11 +33,16 @@
     <section class="auth-card"><div id="authbox"></div></section>
   </div>
 </div>
+<div class="app">
+  <aside class="side" aria-label="Seitenleiste">
+    <div class="logo"><i aria-hidden="true"><b></b><b></b><b></b></i>Studium</div>
+    <nav class="slinks" id="links" aria-label="Hauptnavigation"></nav>
+    <button class="sbuser" id="sbprof" data-go="profil" aria-label="Einstellungen"><span class="avatar sm" id="sbav"></span><span class="sbn"><b id="sbname"></b><small>Einstellungen</small></span></button>
+  </aside>
 <div class="wrap">
   <div class="navwrap">
     <header class="nav">
       <div class="logo"><i aria-hidden="true"><b></b><b></b><b></b></i>Studium</div>
-      <nav class="links" id="links" aria-label="Hauptnavigation"></nav>
       <div class="nav-r">
         <span class="sync" id="sync" data-s="lokal">Nur lokal</span>
         <select class="semsel" id="semsel" aria-label="Semester"></select>
@@ -47,9 +52,10 @@
         <button class="btn pri" id="bnew"></button>
       </div>
     </header>
-    <div class="mbar"><select class="semsel" id="semsel2" aria-label="Semester"></select><span class="sync" id="sync2" data-s="lokal">Nur lokal</span></div>
   </div>
+  <div class="mbar"><select class="semsel" id="semsel2" aria-label="Semester"></select><span class="sync" id="sync2" data-s="lokal">Nur lokal</span></div>
   <main id="view"></main>
+</div>
 </div>
 <div class="tabbar"><nav id="tabs" aria-label="Navigation"></nav></div>
 <div id="modal" hidden></div>
