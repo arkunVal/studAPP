@@ -229,8 +229,6 @@ textarea.fi{min-height:90px;resize:vertical}
   .tabbar button span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   .dash,.two{grid-template-columns:minmax(0,1fr)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .grid{display:none}
-  .daylist{display:block}
   .trow{grid-template-columns:auto minmax(0,1fr)}
   .trow .right{grid-column:1/-1;justify-content:flex-start}
   .frow{grid-template-columns:minmax(0,1fr)}
@@ -605,3 +603,35 @@ button.stat:hover{border-color:color-mix(in srgb,var(--fg) 25%,transparent)}
   .tabs button.has::after{content:"";display:block;width:5px;height:5px;border-radius:50%;background:currentColor;margin:3px auto 0}
 }
 .ftog .grow{flex:1;min-width:0}
+
+/* Stundenplan Handy: Tag und Woche */
+.mctl{display:none}
+.gd{display:none}
+.grid.gday{grid-template-columns:48px minmax(0,1fr)}
+.gday .blk{font-size:13.5px;padding:8px 10px}
+.gday .blk b{font-size:14.5px}
+.blk .pf{font-size:11.5px}
+.blk.tk{background:color-mix(in srgb,var(--c) 22%,var(--card-solid));color:var(--fg);border:1px dashed var(--c)}
+@media (max-width:859px){
+  .mctl{display:grid;gap:10px;margin-bottom:12px}
+  .pseg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .pseg button,.pnav button{height:40px;border-radius:12px;border:1px solid var(--line);background:var(--field);font-weight:600;color:var(--fg)}
+  .pseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+  .pnav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .pnav button:disabled{opacity:.45}
+  .pcap{text-align:center;color:var(--muted);font-size:12.5px}
+  .plan[data-m="tag"] .gw{display:none}
+  .plan[data-m="woche"] .gd{display:none}
+  .plan[data-m="tag"] .gd{display:grid}
+  .plancard{padding:0}
+  .gw{grid-template-columns:30px repeat(var(--cols),minmax(0,1fr));gap:0 2px}
+  .gw .hd{font-size:11.5px;padding:4px 0 8px}
+  .gw .hd small{font-size:9.5px}
+  .gw .hours span{font-size:9.5px;right:3px}
+  .gw .blk{left:1px;right:1px;padding:3px 4px;border-radius:7px;font-size:10px;line-height:1.2}
+  .gw .blk b{font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gw .blk .ty,.gw .blk .rm,.gw .blk .pf{display:none}
+  .gw .blk.bi::after{display:none}
+  .gw .ad{font-size:9px}
+  .grid.gday .hd{text-align:left;padding-left:10px}
+}

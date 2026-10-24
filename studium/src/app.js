@@ -322,8 +322,8 @@ function vTasks(){
   var chips=['alle','offen','abgegeben','bewertet'].map(function(c){return '<button class="chip" data-act="tfilter" data-f="'+c+'" aria-pressed="'+(taskF===c)+'">'+c[0].toUpperCase()+c.slice(1)+'</button>';}).join('');
   var rows=f.map(function(t){var m=modById(t.mod),c=countdown(t.due),done=!isOpen(t);
     return '<div class="trow'+(done?' done':'')+'"><button class="chk" data-act="toggletask" data-id="'+t.id+'" aria-label="Als abgegeben markieren">'+ic('tick')+'</button>'+
-    '<button class="item" style="background:none;padding:0" data-act="edittask" data-id="'+t.id+'"><span class="grow"><div class="tt t" style="white-space:normal">'+esc(t.title)+'</div><div class="ts"><span><span class="dot" style="display:inline-block;background:'+m.color+';margin-right:5px"></span>'+esc(m.name)+'</span><span>'+fmtDT(new Date(t.due))+'</span></div></span></button>'+
-    '<div class="right">'+(done?'':'<button class="btn sm pri" data-act="wpick" data-id="'+t.id+'">'+ic('play')+' Starten</button>')+(t.pts!=null&&t.pts!==''?'<span class="pill good">'+t.pts+(t.max?' / '+t.max:'')+' P.</span>':'')+'<span class="pill">'+t.status+'</span>'+(done?'':'<span class="pill '+c.c+'">'+c.t+'</span>')+'</div><span></span></div>';}).join('');
+    '<button class="item" style="background:none;padding:0" data-act="edittask" data-id="'+t.id+'"><span class="grow"><div class="tt t" style="white-space:normal">'+esc(t.title)+'</div><div class="ts"><span><span class="dot" style="display:inline-block;background:'+m.color+';margin-right:5px"></span>'+esc(m.name)+'</span><span>'+fmtDT(new Date(t.due))+'</span>'+(t.work&&!done?'<span>'+ic('clock')+' Bearbeiten '+new Date(t.work+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'numeric'})+(t.wstart?', '+t.wstart+(t.wend?'–'+t.wend:''):'')+'</span>':'')+'</div></span></button>'+
+    '<div class="right">'+(t.file&&fileById(t.file)?'<button class="btn sm" data-act="openfile" data-id="'+t.file+'">'+ic('note')+' Blatt</button>':'')+(done?'':'<button class="btn sm pri" data-act="wpick" data-id="'+t.id+'">'+ic('play')+' Starten</button>')+(t.pts!=null&&t.pts!==''?'<span class="pill good">'+t.pts+(t.max?' / '+t.max:'')+' P.</span>':'')+'<span class="pill">'+t.status+'</span>'+(done?'':'<span class="pill '+c.c+'">'+c.t+'</span>')+'</div><span></span></div>';}).join('');
   return '<div class="ph"><div><h1>Aufgaben & Abgaben</h1><p>Fristen, Status und Punkte deiner Übungsserien.</p></div><div class="acts"><button class="btn pri" data-act="newtask">'+ic('plus2')+' Abgabe</button></div></div>'+
    '<div class="chips">'+chips+'</div><div class="list">'+(rows||'<div class="card empty">Hier ist nichts.</div>')+'</div>';
 }
@@ -703,12 +703,34 @@ function slotForm(id){
 }
 function taskForm(id){
   if(!need())return;
-  var t=id?S.tasks.filter(function(x){return x.id===id;})[0]:{mod:mods()[0].id,title:'',due:(function(){var d=addDays(new Date(),7);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T23:59';})(),status:'offen',pts:'',max:'',remind:1440,note:''};
+  var t=id?S.tasks.filter(function(x){return x.id===id;})[0]:{mod:mods()[0].id,title:'',due:(function(){var d=addDays(new Date(),7);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T23:59';})(),status:'offen',pts:'',max:'',remind:1440,note:'',work:'',wstart:'',wend:'',file:''};
+  var tf=t.file?S.files.filter(function(x){return x.id===t.file;})[0]:null;
   modal(id?'Abgabe bearbeiten':'Neue Abgabe',
    sel('Modul','mod',modOpts(),t.mod)+fld('Titel','title','text',t.title,'required placeholder="z. B. Übungsserie 3"')+'<div class="frow">'+fld('Frist','due','datetime-local',t.due,'required')+sel('Status','status',STATUS.map(function(x){return [x,x];}),t.status)+'</div><div class="frow">'+fld('Punkte erreicht','pts','number',t.pts,'step="0.5" min="0"')+fld('Punkte maximal','max','number',t.max,'step="0.5" min="0"')+'</div>'+
-   sel('Erinnerung','remind',[[0,'keine'],[1440,'1 Tag vorher'],[4320,'3 Tage vorher'],[10080,'1 Woche vorher']],t.remind)+'<label class="fl">Notiz<textarea class="fi" name="note">'+esc(t.note||'')+'</textarea></label>',
-   function(fd){var o={id:id||uid(),mod:fd.get('mod'),title:fd.get('title').trim(),due:fd.get('due'),status:fd.get('status'),pts:fd.get('pts')===''?null:+fd.get('pts'),max:fd.get('max')===''?null:+fd.get('max'),remind:+fd.get('remind'),note:fd.get('note')};
-    if(!o.title)return false;if(id)S.tasks=S.tasks.map(function(x){return x.id===id?o:x;});else S.tasks.push(o);touch();render();},
+   sel('Erinnerung','remind',[[0,'keine'],[1440,'1 Tag vorher'],[4320,'3 Tage vorher'],[10080,'1 Woche vorher']],t.remind)+
+   '<div class="sh" style="margin:6px 0 0">Bearbeiten einplanen</div><p class="hint" style="margin:0">Wann willst du daran arbeiten? Der Block erscheint im Kalender und im Stundenplan.</p><div class="frow">'+fld('Datum','work','date',t.work||'')+'</div><div class="frow">'+fld('Von','wstart','time',t.wstart||'')+fld('Bis','wend','time',t.wend||'')+'</div>'+
+   '<div class="sh" style="margin:6px 0 0">Aufgabenblatt</div>'+
+   (tf?'<div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="btn sm" data-act="openfile" data-id="'+tf.id+'" data-close>'+ic('note')+' '+esc(tf.name||tf.title)+'</button><label class="fck"><input type="checkbox" name="rmfile" value="1"><span>Verknüpfung lösen</span></label></div>':'')+
+   '<label class="fl">'+(tf?'Anderes Blatt hochladen (ersetzt die Verknüpfung)':'PDF oder Foto der Aufgaben (optional)')+'<input class="fi" type="file" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,image/*"></label>'+
+   '<label class="fl">Notiz<textarea class="fi" name="note">'+esc(t.note||'')+'</textarea></label>',
+   function(fd){var o={id:id||uid(),mod:fd.get('mod'),title:fd.get('title').trim(),due:fd.get('due'),status:fd.get('status'),pts:fd.get('pts')===''?null:+fd.get('pts'),max:fd.get('max')===''?null:+fd.get('max'),remind:+fd.get('remind'),note:fd.get('note'),work:fd.get('work')||'',wstart:fd.get('wstart')||'',wend:fd.get('wend')||'',file:fd.get('rmfile')?'':(t.file||'')};
+    if(!o.title)return false;
+    if(!o.work){o.wstart='';o.wend='';}
+    if(o.wstart&&o.wend&&toMin(o.wend)<=toMin(o.wstart)){toast('Das Ende muss nach dem Beginn liegen.');return false;}
+    if(!o.wstart)o.wend='';
+    function save(){if(id)S.tasks=S.tasks.map(function(x){return x.id===id?o:x;});else S.tasks.push(o);if(o.work)calSel=o.work;touch();render();}
+    var file=fd.get('file');
+    if(file&&file.size){
+      if(file.size>50*1024*1024){toast('Die Datei ist größer als 50 MB.');return false;}
+      toast('Lädt hoch …');
+      var key=user.id+'/'+uid()+'-'+file.name.replace(/[^\w.\-]+/g,'_');
+      return supabase.storage.from('dateien').upload(key,file,{contentType:file.type||undefined}).then(function(r){
+        if(r.error)throw r.error;
+        var fid=uid();S.files.push({id:fid,title:o.title+' (Aufgabenblatt)',mod:o.mod,slot:'',tags:['aufgabe'],note:'',added:Date.now(),path:key,name:file.name,ct:file.type,size:file.size});
+        o.file=fid;save();toast('Hochgeladen');return true;
+      }).catch(function(){toast('Upload fehlgeschlagen.');return false;});
+    }
+    save();},
    id?{del:function(){S.tasks=S.tasks.filter(function(x){return x.id!==id;});touch();render();}}:{});
 }
 function fileForm(id,page){
@@ -1257,15 +1279,20 @@ function occurs(e,d){
   if(r==='monthly')return a.getDate()===b.getDate();
   return false;
 }
+function workEvents(date){
+  if(!fOn('abgaben'))return [];
+  var ds=todayStr(date);
+  return tasks().filter(function(t){return isOpen(t)&&t.work===ds;}).map(function(t){var m=modById(t.mod);return {id:t.id,task:1,title:'Bearbeiten: '+t.title,start:t.wstart||'',end:t.wstart?(t.wend||''):'',place:m.short,color:m.color};});
+}
 function eventsOn(date){
-  return S.events.filter(function(e){return occurs(e,date);}).sort(function(a,b){return String(a.start||'').localeCompare(String(b.start||''));});
+  return S.events.filter(function(e){return occurs(e,date);}).concat(workEvents(date)).sort(function(a,b){return String(a.start||'').localeCompare(String(b.start||''));});
 }
 function slotRow(s,extra){
   var m=modById(s.mod);
   return '<button class="item" data-act="editslot" data-id="'+s.id+'"><span class="dot" style="background:'+m.color+'"></span><span class="grow"><div class="t">'+esc(m.short)+' · '+esc(s.type)+'</div><div class="s">'+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+'</div></span>'+(extra||'')+'</button>';
 }
 function evRow(e){
-  return '<button class="item" data-act="editevent" data-id="'+e.id+'"><span class="dot" style="background:'+(e.color||'var(--accent)')+'"></span><span class="grow"><div class="t">'+esc(e.title)+'</div><div class="s">'+evTime(e)+(e.place?' · '+esc(e.place):'')+'</div></span><span class="pill">privat</span></button>';
+  return '<button class="item" data-act="'+(e.task?'edittask':'editevent')+'" data-id="'+e.id+'"><span class="dot" style="background:'+(e.color||'var(--accent)')+'"></span><span class="grow"><div class="t">'+esc(e.title)+'</div><div class="s">'+evTime(e)+(e.place?' · '+esc(e.place):'')+'</div></span><span class="pill">'+(e.task?'Aufgabe':'privat')+'</span></button>';
 }
 function todayRows(now,nowMin){
   var rows=[];
@@ -1324,56 +1351,62 @@ function eventForm(id,datePre){
 }
 
 /* ---------- Stundenplan (mit privaten Terminen, heutiger Tag hervorgehoben) ---------- */
-function vPlan(){
-  var now=new Date(),mon=addDays(monday(now),planWeek*7),wk=isoWeek(mon),nowMin=now.getHours()*60+now.getMinutes();
-  var ss=slots(),cols=ss.some(function(s){return s.day===5;})?6:5;
-  for(var q=5;q<7;q++){if(eventsOn(addDays(mon,q)).length)cols=Math.max(cols,q+1);}
+var planMode='tag', planDayOff=0;
+var DSL=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+function planRange(dates){
   var lo=8,hi=18;
-  ss.forEach(function(s){lo=Math.min(lo,Math.floor(toMin(s.start)/60));hi=Math.max(hi,Math.ceil(toMin(s.end)/60));});
-  for(var q2=0;q2<cols;q2++)eventsOn(addDays(mon,q2)).forEach(function(e){if(e.start){lo=Math.min(lo,Math.floor(toMin(e.start)/60));hi=Math.max(hi,Math.ceil(toMin(evEnd(e))/60));}});
-  hi=Math.min(hi,24);
-  var PX=54,H=(hi-lo)*PX,head='<div></div>',body='',hrs='';
+  slots().forEach(function(s){lo=Math.min(lo,Math.floor(toMin(s.start)/60));hi=Math.max(hi,Math.ceil(toMin(s.end)/60));});
+  dates.forEach(function(dt){eventsOn(dt).forEach(function(e){if(e.start){lo=Math.min(lo,Math.floor(toMin(e.start)/60));hi=Math.max(hi,Math.ceil(toMin(evEnd(e))/60));}});});
+  return [lo,Math.min(hi,24)];
+}
+function planGrid(dates,PX,big,cls){
+  var now=new Date(),nowMin=now.getHours()*60+now.getMinutes(),r=planRange(dates),lo=r[0],hi=r[1];
+  var H=(hi-lo)*PX,head='<div></div>',body='',hrs='';
   for(var h=lo;h<=hi;h++){hrs+='<span style="top:'+((h-lo)*PX)+'px">'+pad(h)+':00</span>';}
   function ov(a1,a2,b1,b2){return a1<b2&&b1<a2;}
-  for(var d=0;d<cols;d++){
-    var date=addDays(mon,d),today=dayDiff(date,now)===0,sl=slotsOn(date),evs=eventsOn(date),timed=evs.filter(function(e){return e.start;});
+  dates.forEach(function(date){
+    var wd=(date.getDay()+6)%7,today=dayDiff(date,now)===0,sl=slotsOn(date),evs=eventsOn(date),timed=evs.filter(function(e){return e.start;});
     var ad=evs.filter(function(e){return !e.start;}).map(function(e){return '<em class="ad" style="--c:'+(e.color||'var(--accent)')+'" title="'+esc(e.title)+'">'+esc(e.title)+'</em>';}).join('');
-    head+='<div class="hd'+(today?' today':'')+'"'+(today?' aria-current="date"':'')+'>'+DS7[d]+'<small>'+pad(date.getDate())+'.'+pad(date.getMonth()+1)+'.</small>'+ad+'</div>';
+    head+='<div class="hd'+(today?' today':'')+'"'+(today?' aria-current="date"':'')+'>'+(big?DSL[wd]:DS7[wd])+'<small>'+pad(date.getDate())+'.'+pad(date.getMonth()+1)+'.</small>'+ad+'</div>';
     var lines='';for(var h2=lo;h2<hi;h2++)lines+='<div class="hl" style="top:'+((h2-lo)*PX)+'px"></div>';
-    var blocks=sl.map(function(s){var m=modById(s.mod),top=(toMin(s.start)-lo*60)/60*PX,hh=(toMin(s.end)-toMin(s.start))/60*PX;
+    var blocks=sl.map(function(s){var m=modById(s.mod),top=(toMin(s.start)-lo*60)/60*PX,hh=(toMin(s.end)-toMin(s.start))/60*PX,pf=profName(m);
       var half=timed.some(function(e){return ov(toMin(s.start),toMin(s.end),toMin(e.start),toMin(evEnd(e)));});
-      return '<button class="blk'+(s.bi?' bi':'')+'" data-act="slotinfo" data-id="'+s.id+'" style="top:'+top+'px;height:'+Math.max(hh-2,28)+'px;background:'+m.color+(half?';right:calc(50% + 2px)':'')+'"><b>'+esc(m.short)+' · '+esc(s.type)+'</b><span>'+s.start+'–'+s.end+(s.room?' · '+esc(s.room):'')+'</span>'+(profName(m)?'<em class="pf">'+esc(profName(m))+'</em>':'')+'</button>';}).join('');
+      return '<button class="blk'+(s.bi?' bi':'')+'" data-act="slotinfo" data-id="'+s.id+'" style="top:'+top+'px;height:'+Math.max(hh-2,22)+'px;background:'+m.color+(half?';right:calc(50% + 2px)':'')+'">'+
+        (big?'<b>'+esc(m.name)+'</b><span>'+esc(s.type)+' · '+s.start+'–'+s.end+'</span>'+(s.room?'<span>'+esc(s.room)+'</span>':''):'<b>'+esc(m.short)+'<i class="ty"> · '+esc(s.type)+'</i></b><span>'+s.start+'–'+s.end+(s.room?'<i class="rm"> · '+esc(s.room)+'</i>':'')+'</span>')+
+        (pf?'<em class="pf">'+esc(pf)+'</em>':'')+'</button>';}).join('');
     var eb=timed.map(function(e){var top=(toMin(e.start)-lo*60)/60*PX,hh=(toMin(evEnd(e))-toMin(e.start))/60*PX;
       var half=sl.some(function(s){return ov(toMin(s.start),toMin(s.end),toMin(e.start),toMin(evEnd(e)));});
-      return '<button class="blk ev" data-act="editevent" data-id="'+e.id+'" style="top:'+top+'px;height:'+Math.max(hh-2,28)+'px;--c:'+(e.color||'var(--accent)')+(half?';left:calc(50% + 2px)':'')+'"><b>'+esc(e.title)+'</b><span>'+e.start+(e.end?'–'+e.end:'')+(e.place?' · '+esc(e.place):'')+'</span></button>';}).join('');
+      return '<button class="blk ev'+(e.task?' tk':'')+'" data-act="'+(e.task?'edittask':'editevent')+'" data-id="'+e.id+'" style="top:'+top+'px;height:'+Math.max(hh-2,22)+'px;--c:'+(e.color||'var(--accent)')+(half?';left:calc(50% + 2px)':'')+'"><b>'+esc(e.title)+'</b><span>'+e.start+(e.end?'–'+e.end:'')+(e.place?'<i class="rm"> · '+esc(e.place)+'</i>':'')+'</span></button>';}).join('');
     var nl=(today&&nowMin>=lo*60&&nowMin<=hi*60)?'<div class="nowline" style="top:'+((nowMin-lo*60)/60*PX)+'px"><i></i></div>':'';
     body+='<div class="dcol'+(today?' today':'')+'" style="height:'+H+'px">'+lines+blocks+eb+nl+'</div>';
-  }
-  var grid='<div class="grid" style="--cols:'+cols+'">'+head+'<div class="hours" style="height:'+H+'px">'+hrs+'</div>'+body+'</div>';
-  // Handy: Tagesliste
-  if(planDay<0){var wd=(now.getDay()+6)%7;planDay=wd<cols?wd:0;}
-  if(planDay>=cols)planDay=0;
-  var cnt=[];for(var q3=0;q3<cols;q3++){var dq=addDays(mon,q3);cnt.push(slotsOn(dq).length+eventsOn(dq).length);}
-  var tabs='<div class="tabs" role="group" aria-label="Wochentag" style="--n:'+cols+'">'+DS7.slice(0,cols).map(function(n,i){var dt=addDays(mon,i),td=dayDiff(dt,now)===0;return '<button data-act="planday" data-i="'+i+'" class="'+(td?'today':'')+(cnt[i]?' has':'')+'" aria-pressed="'+(planDay===i)+'"><span class="wd">'+n+'</span><small>'+pad(dt.getDate())+'</small></button>';}).join('')+'</div>';
-  var pdate=addDays(mon,planDay),rows=[],isT=dayDiff(pdate,now)===0;
-  slotsOn(pdate).forEach(function(s){var m=modById(s.mod),pf=profName(m),on=isT&&nowMin>=toMin(s.start)&&nowMin<toMin(s.end),past=isT&&nowMin>=toMin(s.end);
-    rows.push({k:s.start,h:'<div class="tl'+(on?' on':'')+(past?' past':'')+'"><div class="tl-t"><b>'+s.start+'</b><span>'+s.end+'</span></div><button class="tl-c" style="--c:'+m.color+'" data-act="slotinfo" data-id="'+s.id+'"><div class="t">'+esc(m.name)+'</div><div class="s">'+esc(s.type)+(s.bi?' · alle 2 Wochen':'')+'</div>'+((s.room||pf)?'<div class="m">'+(s.room?'<span>'+ic('pin')+esc(s.room)+'</span>':'')+(pf?'<span>'+ic('user')+esc(pf)+'</span>':'')+'</div>':'')+'</button></div>'});});
-  eventsOn(pdate).forEach(function(e){var on=isT&&e.start&&nowMin>=toMin(e.start)&&nowMin<toMin(evEnd(e)),past=isT&&e.start&&nowMin>=toMin(evEnd(e));
-    rows.push({k:e.start||'00:00',h:'<div class="tl ev'+(on?' on':'')+(past?' past':'')+'"><div class="tl-t">'+(e.start?'<b>'+e.start+'</b>'+(e.end?'<span>'+e.end+'</span>':''):'<b>ganz-</b><span>tägig</span>')+'</div><button class="tl-c dashed" style="--c:'+(e.color||'var(--accent)')+'" data-act="editevent" data-id="'+e.id+'"><div class="t">'+esc(e.title)+'</div><div class="s">Privat</div>'+(e.place?'<div class="m"><span>'+ic('pin')+esc(e.place)+'</span></div>':'')+'</button></div>'});});
-  rows.sort(function(a,b){return a.k.localeCompare(b.k);});
-  var dayh='<div class="dayh">'+pdate.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})+(isT?' · heute':'')+'</div>';
-  var list='<div class="tlist">'+(rows.length?rows.map(function(r){return r.h;}).join(''):'<div class="empty tl-empty">Frei an diesem Tag</div>')+'</div>';
+  });
+  return '<div class="grid '+cls+(big?' gday':'')+'" style="--cols:'+dates.length+'">'+head+'<div class="hours" style="height:'+H+'px">'+hrs+'</div>'+body+'</div>';
+}
+function planSync(){planWeek=Math.floor(dayDiff(monday(addDays(new Date(),planDayOff)),monday(new Date()))/7);}
+function vPlan(){
+  var now=new Date(),mon=addDays(monday(now),planWeek*7),wk=isoWeek(mon);
+  var cols=slots().some(function(s){return s.day===5;})?6:5;
+  for(var q=5;q<7;q++){if(eventsOn(addDays(mon,q)).length)cols=Math.max(cols,q+1);}
+  var wd=[];for(var d=0;d<cols;d++)wd.push(addDays(mon,d));
+  var dd=addDays(now,planDayOff);
+  var gw=planGrid(wd,50,false,'gw'),gd=planGrid([dd],64,true,'gd');
+  var dm=addDays(monday(dd),0),capW='KW '+wk+' · '+pad(mon.getDate())+'.'+pad(mon.getMonth()+1)+'.–'+pad(addDays(mon,cols-1).getDate())+'.'+pad(addDays(mon,cols-1).getMonth()+1)+'.';
+  var mctl='<div class="mctl"><div class="pseg"><button data-act="pmode" data-m="woche" aria-pressed="'+(planMode==='woche')+'">Woche</button><button data-act="pmode" data-m="tag" aria-pressed="'+(planMode==='tag')+'">Tag</button></div>'+
+   '<div class="pnav"><button data-act="pnav" data-n="-1" aria-label="Zurück">'+ic('left')+'</button><button data-act="pnow"'+((planMode==='tag'?planDayOff===0:planWeek===0)?' disabled':'')+'>Heute</button><button data-act="pnav" data-n="1" aria-label="Weiter">'+ic('right')+'</button></div>'+
+   (planMode==='woche'?'<div class="pcap">'+capW+'</div>':'')+'</div>';
   return '<div class="ph"><div><h1>Stundenplan & Kalender</h1><p class="dsk">Wöchentlich gleich, zweiwöchige Übungen erscheinen nur in der passenden KW. Private Termine sind gestrichelt.</p></div><div class="acts"><button class="btn" data-act="newevent">'+ic('plus2')+' Privat</button><button class="btn pri" data-act="newslot">'+ic('plus2')+' Termin</button></div></div>'+
-   '<div class="weekbar"><button class="ibtn" data-act="wprev" aria-label="Vorherige Woche">'+ic('left')+'</button><span class="wk">KW '+wk+' · '+pad(mon.getDate())+'.'+pad(mon.getMonth()+1)+'.</span><button class="ibtn" data-act="wnext" aria-label="Nächste Woche">'+ic('right')+'</button>'+(planWeek?'<button class="btn sm" data-act="wnow">Diese Woche</button>':'')+'</div>'+
-   '<div class="card plancard">'+(mods().length||S.events.length?grid+'<div class="daylist">'+tabs+dayh+list+'</div>':'<div class="empty">Lege zuerst unter „Module“ ein Modul an.</div>')+'</div>';
+   '<div class="weekbar dsk"><button class="ibtn" data-act="wprev" aria-label="Vorherige Woche">'+ic('left')+'</button><span class="wk">KW '+wk+' · '+pad(mon.getDate())+'.'+pad(mon.getMonth()+1)+'.</span><button class="ibtn" data-act="wnext" aria-label="Nächste Woche">'+ic('right')+'</button>'+(planWeek?'<button class="btn sm" data-act="wnow">Diese Woche</button>':'')+'</div>'+
+   mctl+
+   '<div class="card plancard plan" data-m="'+planMode+'">'+(mods().length||S.events.length?gw+gd:'<div class="empty">Lege zuerst unter „Module“ ein Modul an.</div>')+'</div>';
 }
 
+function planStep(n){if(planMode==='tag'){planDayOff+=n;planSync();}else{planWeek+=n;planDayOff+=7*n;}render();}
 var swX=0,swY=0;
 document.addEventListener('touchstart',function(e){var t=e.touches[0];swX=t.clientX;swY=t.clientY;},{passive:true});
 document.addEventListener('touchend',function(e){
-  if(view!=='plan'||!e.target.closest||!e.target.closest('.daylist'))return;
+  if(view!=='plan'||!e.target.closest||!e.target.closest('.plan'))return;
   var t=e.changedTouches[0],dx=t.clientX-swX,dy=t.clientY-swY;
-  if(Math.abs(dx)>60&&Math.abs(dy)<40){var n=document.querySelectorAll('.daylist .tabs button').length,i=planDay+(dx<0?1:-1);if(i>=0&&i<n){planDay=i;render();}}
+  if(Math.abs(dx)>60&&Math.abs(dy)<40&&window.innerWidth<860){planStep(dx<0?1:-1);}
 },{passive:true});
 /* ---------- Ereignisse ---------- */
 document.addEventListener('click',function(e){
@@ -1396,8 +1429,8 @@ function act(a,d){
    case 'newsem':semForm();break;case 'editsem':semForm(d.id);break;
    case 'toggletask':var t=S.tasks.filter(function(x){return x.id===d.id;})[0];t.status=isOpen(t)?'abgegeben':'offen';touch();render();break;
    case 'tfilter':taskF=d.f;render();break;
-   case 'wprev':planWeek--;render();break;case 'wnext':planWeek++;render();break;case 'wnow':planWeek=0;planDay=-1;render();break;
-   case 'planday':planDay=+d.i;render();break;
+   case 'wprev':planWeek--;planDayOff-=7;render();break;case 'wnext':planWeek++;planDayOff+=7;render();break;case 'wnow':planWeek=0;planDayOff=0;render();break;
+   case 'pmode':planMode=d.m;render();break;case 'pnav':planStep(+d.n);break;case 'pnow':planWeek=0;planDayOff=0;render();break;
    case 'calprev':calM=new Date(calM.getFullYear(),calM.getMonth()-1,1);render();break;
    case 'calnext':calM=new Date(calM.getFullYear(),calM.getMonth()+1,1);render();break;
    case 'deltype':S.types=S.types.filter(function(x){return x!==d.t;});touch();render();break;
