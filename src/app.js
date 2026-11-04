@@ -8,7 +8,7 @@ var LS='studium:anon', LST='studium-app:theme', LSP='studium:profile';
 var DAYS=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
 var DS=['Mo','Di','Mi','Do','Fr','Sa'];
 var COLORS=['#ff8a4c','#ff6b8b','#3fd0c0','#a495ff','#f6c344','#5db4ff'];
-var STATUS=['offen','in Arbeit','abgegeben','bewertet'];
+var STATUS=['offen','in Arbeit','abgegeben','bewertet','nicht bearbeitet'];
 var IC={
  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
  cal:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/>',
@@ -319,16 +319,28 @@ function chart(all){
   return '<svg class="chart" viewBox="0 0 '+vw+' '+vh+'" role="img" aria-label="Anzahl der Abgabefristen pro Kalenderwoche">'+s+'</svg>';
 }
 
+function taskGradeCard(all){
+  var g=all.filter(function(t){return t.status==='bewertet';}),sp=0,sm=0;
+  g.forEach(function(t){if(t.pts!=null&&t.max){sp+=+t.pts;sm+=+t.max;}});
+  var nb=all.filter(function(t){return t.status==='nicht bearbeitet';}).length,tot=g.length+nb;
+  var right=sm?Math.round(sp/sm*100):null,work=tot?Math.round(g.length/tot*100):null;
+  function blk(title,val,sub,bar){return '<div class="srow"><div class="sl"><span>'+title+'</span></div><div class="bignum"><span>'+(val==null?'–':val+' %')+'</span><small>'+sub+'</small></div><div class="prog" role="progressbar" aria-label="'+title+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+(val||0)+'"><i style="width:'+(val||0)+'%;'+(bar||'')+'"></i></div></div>';}
+  var stack=tot?'<div class="stack" style="margin-top:14px" aria-hidden="true"><i class="s-done" style="width:'+g.length/tot*100+'%"></i><i class="s-plan" style="width:'+nb/tot*100+'%"></i></div><div class="legend"><span class="g">bearbeitet &amp; bewertet ('+g.length+')</span><span class="n">nicht bearbeitet ('+nb+')</span></div>':'';
+  return '<div class="card" style="margin-bottom:14px"><h3>Auswertung <small>alle bewerteten Abgaben</small></h3><div class="frow">'+
+    blk('Richtig',right,sm?fmtNum(sp)+' von '+fmtNum(sm)+' Punkten':'noch keine Punkte','background:var(--good)')+
+    blk('Bearbeitet',work,tot?g.length+' von '+tot+' Abgaben':'noch nichts bewertet')+'</div>'+stack+
+    '<p class="hint" style="margin:10px 0 0">Richtig = erreichte Punkte ÷ mögliche Punkte. Bearbeitet = bewertete Abgaben ÷ (bewertet + nicht bearbeitet).</p></div>';
+}
 function vTasks(){
   var all=tasks().sort(byDue);
-  var f=all.filter(function(t){return taskF==='alle'||(taskF==='offen'?isOpen(t):taskF==='abgegeben'?t.status==='abgegeben':t.status==='bewertet');});
-  var chips=['alle','offen','abgegeben','bewertet'].map(function(c){return '<button class="chip" data-act="tfilter" data-f="'+c+'" aria-pressed="'+(taskF===c)+'">'+c[0].toUpperCase()+c.slice(1)+'</button>';}).join('');
+  var f=all.filter(function(t){return taskF==='alle'||(taskF==='offen'?isOpen(t):taskF==='abgegeben'?t.status==='abgegeben':taskF==='nicht bearbeitet'?t.status==='nicht bearbeitet':t.status==='bewertet');});
+  var chips=['alle','offen','abgegeben','bewertet','nicht bearbeitet'].map(function(c){return '<button class="chip" data-act="tfilter" data-f="'+c+'" aria-pressed="'+(taskF===c)+'">'+c[0].toUpperCase()+c.slice(1)+'</button>';}).join('');
   var rows=f.map(function(t){var m=modById(t.mod),c=countdown(t.due),done=!isOpen(t);
     return '<div class="trow'+(done?' done':'')+'"><button class="chk" data-act="toggletask" data-id="'+t.id+'" aria-label="Als abgegeben markieren">'+ic('tick')+'</button>'+
     '<button class="item" style="background:none;padding:0" data-act="edittask" data-id="'+t.id+'"><span class="grow"><div class="tt t" style="white-space:normal">'+esc(t.title)+'</div><div class="ts"><span><span class="dot" style="display:inline-block;background:'+m.color+';margin-right:5px"></span>'+esc(m.name)+'</span><span>'+fmtDT(new Date(t.due))+'</span>'+(t.work&&!done?'<span>'+ic('clock')+' Bearbeiten '+new Date(t.work+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'numeric'})+(t.wstart?', '+t.wstart+(t.wend?'–'+t.wend:''):'')+'</span>':'')+'</div></span></button>'+
     '<div class="right">'+(t.file&&fileById(t.file)?'<button class="btn sm" data-act="openfile" data-id="'+t.file+'">'+ic('note')+' Blatt</button>':'')+(done?'':'<button class="btn sm pri" data-act="wpick" data-id="'+t.id+'">'+ic('play')+' Starten</button>')+(t.pts!=null&&t.pts!==''?'<span class="pill good">'+t.pts+(t.max?' / '+t.max:'')+' P.</span>':'')+'<span class="pill">'+t.status+'</span>'+(done?'':'<span class="pill '+c.c+'">'+c.t+'</span>')+'</div><span></span></div>';}).join('');
   return '<div class="ph"><div><h1>Aufgaben & Abgaben</h1><p>Fristen, Status und Punkte deiner Übungsserien.</p></div><div class="acts"><button class="btn pri" data-act="newtask">'+ic('plus2')+' Abgabe</button></div></div>'+
-   '<div class="chips">'+chips+'</div><div class="list">'+(rows||'<div class="card empty">Hier ist nichts.</div>')+'</div>';
+   '<div class="chips">'+chips+'</div>'+(taskF==='bewertet'?taskGradeCard(all):'')+'<div class="list">'+(rows||'<div class="card empty">Hier ist nichts.</div>')+'</div>';
 }
 
 function ftype(f){var n=(f.name||'').toLowerCase();if(/\.pdf$/.test(n))return ['PDF','#ff8a4c'];if(/\.pptx?$/.test(n))return ['PPT','#f6c344'];if(/\.docx?$/.test(n))return ['DOC','#5db4ff'];if(/\.(png|jpe?g|heic|webp|gif)$/.test(n))return ['IMG','#3fd0c0'];return [f.path?'DAT':'NOTIZ','#a495ff'];}
@@ -719,6 +731,7 @@ function taskForm(id){
    '<label class="fl">Notiz<textarea class="fi" name="note">'+esc(t.note||'')+'</textarea></label>',
    function(fd){var o={id:id||uid(),mod:fd.get('mod'),title:fd.get('title').trim(),due:fd.get('due'),status:fd.get('status'),pts:fd.get('pts')===''?null:+fd.get('pts'),max:fd.get('max')===''?null:+fd.get('max'),remind:+fd.get('remind'),note:fd.get('note'),work:fd.get('work')||'',wstart:fd.get('wstart')||'',wend:fd.get('wend')||'',file:fd.get('rmfile')?'':(t.file||'')};
     if(!o.title)return false;
+    if(o.pts!=null&&o.pts!==t.pts)o.status='bewertet';
     if(!o.work){o.wstart='';o.wend='';}
     if(o.wstart&&o.wend&&toMin(o.wend)<=toMin(o.wstart)){toast('Das Ende muss nach dem Beginn liegen.');return false;}
     if(!o.wstart)o.wend='';
