@@ -320,16 +320,20 @@ function chart(all){
 }
 
 function taskGradeCard(all){
-  var g=all.filter(function(t){return t.status==='bewertet';}),sp=0,sm=0;
-  g.forEach(function(t){if(t.pts!=null&&t.max){sp+=+t.pts;sm+=+t.max;}});
-  var nb=all.filter(function(t){return t.status==='nicht bearbeitet';}).length,tot=g.length+nb;
-  var right=sm?Math.round(sp/sm*100):null,work=tot?Math.round(g.length/tot*100):null;
   function blk(title,val,sub,bar){return '<div class="srow"><div class="sl"><span>'+title+'</span></div><div class="bignum"><span>'+(val==null?'–':val+' %')+'</span><small>'+sub+'</small></div><div class="prog" role="progressbar" aria-label="'+title+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+(val||0)+'"><i style="width:'+(val||0)+'%;'+(bar||'')+'"></i></div></div>';}
-  var stack=tot?'<div class="stack" style="margin-top:14px" aria-hidden="true"><i class="s-done" style="width:'+g.length/tot*100+'%"></i><i class="s-plan" style="width:'+nb/tot*100+'%"></i></div><div class="legend"><span class="g">bearbeitet &amp; bewertet ('+g.length+')</span><span class="n">nicht bearbeitet ('+nb+')</span></div>':'';
-  return '<div class="card" style="margin-bottom:14px"><h3>Auswertung <small>alle bewerteten Abgaben</small></h3><div class="frow">'+
-    blk('Richtig',right,sm?fmtNum(sp)+' von '+fmtNum(sm)+' Punkten':'noch keine Punkte','background:var(--good)')+
-    blk('Bearbeitet',work,tot?g.length+' von '+tot+' Abgaben':'noch nichts bewertet')+'</div>'+stack+
-    '<p class="hint" style="margin:10px 0 0">Richtig = erreichte Punkte ÷ mögliche Punkte. Bearbeitet = bewertete Abgaben ÷ (bewertet + nicht bearbeitet).</p></div>';
+  var cards=mods().map(function(m){
+    var mt=all.filter(function(t){return t.mod===m.id;}),g=mt.filter(function(t){return t.status==='bewertet';}),sp=0,sm=0;
+    g.forEach(function(t){if(t.pts!=null&&t.max){sp+=+t.pts;sm+=+t.max;}});
+    var nb=mt.filter(function(t){return t.status==='nicht bearbeitet';}).length,tot=g.length+nb;
+    if(!tot)return '';
+    var right=sm?Math.round(sp/sm*100):null,work=Math.round(g.length/tot*100);
+    var stack='<div class="stack" style="margin-top:14px" aria-hidden="true"><i class="s-done" style="width:'+g.length/tot*100+'%"></i><i class="s-plan" style="width:'+nb/tot*100+'%"></i></div><div class="legend"><span class="g">bearbeitet &amp; bewertet ('+g.length+')</span><span class="n">nicht bearbeitet ('+nb+')</span></div>';
+    return '<div class="card"><h3><span><span class="dot" style="display:inline-block;background:'+m.color+';margin-right:8px"></span>'+esc(m.name)+'</span></h3><div class="frow">'+
+      blk('Richtig',right,sm?fmtNum(sp)+' von '+fmtNum(sm)+' Punkten':'noch keine Punkte','background:var(--good)')+
+      blk('Bearbeitet',work,g.length+' von '+tot+' Abgaben')+'</div>'+stack+'</div>';
+  }).join('');
+  if(!cards)return '';
+  return '<div class="sh" style="margin-top:4px">Auswertung pro Modul</div><div class="list" style="margin-bottom:6px">'+cards+'</div><p class="hint" style="margin:0 0 14px">Richtig = erreichte ÷ mögliche Punkte. Bearbeitet = bewertete Abgaben ÷ (bewertet + nicht bearbeitet).</p>';
 }
 function vTasks(){
   var all=tasks().sort(byDue);
