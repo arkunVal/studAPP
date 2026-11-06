@@ -1058,7 +1058,7 @@ function vSession(){
   var c=cardById(s.queue[s.i]),m=modById(c.mod);
   return '<div class="ph"><div><h1>Lernen</h1><p>'+(s.i+1)+' von '+s.queue.length+' · '+esc(m?m.name:'')+'</p></div><div class="acts"><button class="btn" data-act="cardend">Beenden</button></div></div>'+
    '<div class="prog" style="max-width:640px;margin:0 auto 16px"><i style="width:'+(s.i/s.queue.length*100).toFixed(1)+'%"></i></div>'+
-   '<div class="fc" data-act="flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="fc-in'+(s.flipped?' flipped':'')+'"><div class="face front"><small>Frage</small><span>'+esc(c.front).replace(/\n/g,'<br>')+'</span></div><div class="face back"><small>Antwort</small><span>'+esc(c.back).replace(/\n/g,'<br>')+'</span></div></div></div>'+
+   '<div class="fc" data-act="flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="fc-in'+(s.flipped?' flipped':'')+'"><div class="face front"><small>Frage</small><span>'+esc(c.front).replace(/\n/g,'<br>')+'</span></div><div class="face rear"><small>Antwort</small><span>'+esc(c.back).replace(/\n/g,'<br>')+'</span></div></div></div>'+
    '<p class="hint" style="text-align:center;margin:12px 0 0"'+(s.flipped?' hidden':'')+' id="fliphint">Tippen oder Leertaste zum Umdrehen</p>'+
    '<div class="rate"'+(s.flipped?'':' hidden')+'><button class="btn" data-act="rate" data-q="0"><b>Nochmal</b><small>morgen</small></button><button class="btn" data-act="rate" data-q="1"><b>Gut</b><small>'+ivLabel(Math.min(5,c.box+1))+'</small></button><button class="btn pri" data-act="rate" data-q="2"><b>Leicht</b><small>'+ivLabel(Math.min(5,c.box+2))+'</small></button></div>';
 }
