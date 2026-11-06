@@ -404,7 +404,7 @@ button.stat:hover{border-color:color-mix(in srgb,var(--fg) 25%,transparent)}
 .fc-in.flipped{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:24px;border:1px solid var(--line);background:var(--card-solid);display:grid;place-items:center;padding:34px 26px 26px;text-align:center;font-size:21px;font-weight:600;line-height:1.4;overflow:auto;box-shadow:var(--shadow);overflow-wrap:anywhere}
 .face small{position:absolute;top:14px;left:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.face.back{transform:rotateY(180deg);background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 20%,var(--card-solid)),var(--card-solid))}
+.face.rear{transform:rotateY(180deg);background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 20%,var(--card-solid)),var(--card-solid))}
 .rate{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:640px;margin:16px auto 0}
 .rate .btn{height:auto;flex-direction:column;gap:0;padding:10px 6px}
 .rate .btn small{font-weight:500;opacity:.75;font-size:12px}

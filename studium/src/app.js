@@ -542,7 +542,7 @@ function setDaten(){
   var stl={sync:'Synchronisiert',speichert:'Speichert …',fehler:'Fehler beim Sync',offline:'Offline',lokal:'Nur lokal'}[syncState]||'–';
   setTimeout(loadStorage,0);
   return '<div class="card"><h3>Datenbank-Status</h3>'+
-   kv('Verbindung',configured&&user?'Supabase verbunden':'Nur lokal')+kv('Sync',stl)+kv('Letzte Änderung',S.updated?new Date(S.updated).toLocaleString('de-DE'):'–')+kv('App-Daten',kb+' KB')+
+   kv('Version','2026-11-06 · Karten-Fix 3')+kv('Verbindung',configured&&user?'Supabase verbunden':'Nur lokal')+kv('Sync',stl)+kv('Letzte Änderung',S.updated?new Date(S.updated).toLocaleString('de-DE'):'–')+kv('App-Daten',kb+' KB')+
    '<div style="margin-top:12px"><button class="btn pri" data-act="syncnow">Jetzt synchronisieren</button></div></div>'+
   '<div class="card"><h3>Speichernutzung</h3><div id="stor"><div class="hint">Lädt …</div></div></div>'+
   '<div class="card"><h3>Inhalt</h3>'+kv('Module',n(S.modules))+kv('Stundenplan-Termine',n(S.slots))+kv('Abgaben',n(S.tasks))+kv('Prüfungen',n(S.exams))+kv('Dateien',n(S.files))+kv('Notizen',n(S.notes))+kv('Karteikarten',n(S.cards))+kv('Kontakte',n(S.contacts))+'</div>'+
@@ -1058,7 +1058,7 @@ function vSession(){
   var c=cardById(s.queue[s.i]),m=modById(c.mod);
   return '<div class="ph"><div><h1>Lernen</h1><p>'+(s.i+1)+' von '+s.queue.length+' · '+esc(m?m.name:'')+'</p></div><div class="acts"><button class="btn" data-act="cardend">Beenden</button></div></div>'+
    '<div class="prog" style="max-width:640px;margin:0 auto 16px"><i style="width:'+(s.i/s.queue.length*100).toFixed(1)+'%"></i></div>'+
-   '<div class="fc" data-act="flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="fc-in'+(s.flipped?' flipped':'')+'"><div class="face front"><small>Frage</small><span>'+esc(c.front).replace(/\n/g,'<br>')+'</span></div><div class="face back"><small>Antwort</small><span>'+esc(c.back).replace(/\n/g,'<br>')+'</span></div></div></div>'+
+   '<div class="fc" data-act="flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="fc-in'+(s.flipped?' flipped':'')+'"><div class="fcf"><small>Frage</small><span>'+esc(c.front).replace(/\n/g,'<br>')+'</span></div><div class="fcr"><small>Antwort</small><span>'+esc(c.back).replace(/\n/g,'<br>')+'</span></div></div></div>'+
    '<p class="hint" style="text-align:center;margin:12px 0 0"'+(s.flipped?' hidden':'')+' id="fliphint">Tippen oder Leertaste zum Umdrehen</p>'+
    '<div class="rate"'+(s.flipped?'':' hidden')+'><button class="btn" data-act="rate" data-q="0"><b>Nochmal</b><small>morgen</small></button><button class="btn" data-act="rate" data-q="1"><b>Gut</b><small>'+ivLabel(Math.min(5,c.box+1))+'</small></button><button class="btn pri" data-act="rate" data-q="2"><b>Leicht</b><small>'+ivLabel(Math.min(5,c.box+2))+'</small></button></div>';
 }
@@ -1507,6 +1507,7 @@ else{
   });
 }
 
+(function(){var st=document.createElement('style');st.textContent='.fc-in,.fc-in.flipped{transform:none!important;transform-style:flat!important;position:relative;min-height:280px}.fcf,.fcr{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:34px 26px 26px;border-radius:20px;border:1px solid var(--line);background:var(--card-solid);color:var(--fg);overflow:auto;font-size:22px;font-weight:600;line-height:1.4;transition:opacity .28s ease,transform .28s ease}.fcr{background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 20%,var(--card-solid)),var(--card-solid));opacity:0;visibility:hidden;transform:scale(.97)}.fc-in.flipped .fcf{opacity:0;visibility:hidden;transform:scale(.97)}.fc-in.flipped .fcr{opacity:1;visibility:visible;transform:none}.fcf small,.fcr small{position:absolute;top:14px;left:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}@media (prefers-reduced-motion:reduce){.fcf,.fcr{transition:none}}';document.head.appendChild(st);})();
 // Tastenkürzel: / = Suche, N = Neu, Esc schließt Dialoge (nicht in Eingabefeldern)
 document.addEventListener('keydown',function(e){
   var t=e.target,tag=t&&t.tagName;if(e.metaKey||e.ctrlKey||e.altKey)return;
